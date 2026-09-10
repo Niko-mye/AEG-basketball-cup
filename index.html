@@ -1,0 +1,2640 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AEG 3×3 Basketball Cup – Turnierplaner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --bg:#111113;
+    --bg-alt:#18181b;
+    --card:#1f1f24;
+    --card-2:#26262c;
+    --line:#333339;
+    --aeg-red:#1466e6;
+    --aeg-red-deep:#0d3f99;
+    --green:#33c46b;
+    --red:#e5484d;
+    --text:#f2f0ea;
+    --text-dim:#9a9aa4;
+    --court:rgba(20,102,230,0.06);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 50% -10%, var(--court) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.02) 40px),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    line-height:1.4;
+  }
+  h1,h2,h3{font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.03em; margin:0 0 8px;}
+  .app{max-width:1180px;margin:0 auto;padding:28px 20px 80px; position:relative; z-index:1;}
+
+  /* Dezente Basketball-Silhouetten im Hintergrund (modernes, ruhiges Wasserzeichen) */
+  .bg-decor{position:fixed; inset:0; overflow:hidden; z-index:0; pointer-events:none;}
+  .bg-decor svg{position:absolute; color:var(--aeg-red);}
+  .bg-decor .ball-a{ width:66vmin; height:66vmin; bottom:-14vmin; right:-12vmin; opacity:0.32; }
+  .bg-decor .ball-b{ width:38vmin; height:38vmin; top:-6vmin; left:-8vmin; opacity:0.24; }
+  .bg-decor .ball-c{ width:30vmin; height:30vmin; top:8vmin; right:6vmin; opacity:0.18; }
+  .bg-decor .ball-d{ width:26vmin; height:26vmin; bottom:6vmin; left:4vmin; opacity:0.18; }
+  header.top{
+    display:flex; align-items:center; gap:20px; margin-bottom:30px;
+    border-bottom:2px solid var(--line); padding-bottom:22px;
+    position:relative; overflow:hidden;
+  }
+  header.top::before{
+    /* dezente Kreislinie im Hintergrund des Headers als Basketball-Motiv */
+    content:""; position:absolute; right:-60px; top:-120px; width:320px; height:320px;
+    border:2px solid rgba(255,255,255,0.045); border-radius:50%; pointer-events:none;
+  }
+  .logo-badge{
+    flex:none; background:#0a0a0c; border:1px solid var(--line); border-radius:14px;
+    padding:12px 20px; display:flex; align-items:center;
+    box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  }
+  .logo-emblem-img{ height:36px; width:auto; display:block; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35)); }
+  .brand-block .eyebrow{
+    display:block; font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.14em;
+    font-size:11px; color:var(--aeg-red); margin-bottom:3px; font-weight:600;
+  }
+  header.top h1{font-size:27px; margin:0; letter-spacing:0.01em;}
+  header.top p{margin:3px 0 0; color:var(--text-dim); font-size:14px;}
+  .header-corner{
+    position:absolute; top:16px; right:0; display:flex; flex-direction:column;
+    align-items:flex-end; gap:8px; z-index:2;
+  }
+  .header-login-panel{
+    display:flex; gap:6px; background:var(--card); border:1px solid var(--line);
+    border-radius:10px; padding:8px; box-shadow:0 10px 24px rgba(0,0,0,0.35);
+  }
+  .header-login-panel input{width:140px; padding:7px 9px; font-size:13px;}
+  .header-login-panel button{padding:7px 12px; font-size:12.5px; white-space:nowrap;}
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:22px; margin-bottom:18px; box-shadow:0 6px 24px rgba(0,0,0,0.22);
+  }
+  .setup-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media (max-width:820px){ .setup-grid{grid-template-columns:1fr;} }
+  .full{grid-column:1/-1;}
+
+  label{display:block; font-size:13px; color:var(--text-dim); margin:12px 0 5px; font-weight:600;}
+  input[type=text],input[type=time],input[type=number]{
+    width:100%; background:var(--bg-alt); border:1px solid var(--line); color:var(--text);
+    padding:10px 12px; border-radius:8px; font-size:14px; font-family:inherit;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input:focus{outline:none; border-color:var(--aeg-red); box-shadow:0 0 0 3px rgba(20,102,230,0.16);}
+
+  .team-row{
+    display:grid; grid-template-columns:1fr 1fr 1.2fr auto; gap:8px; align-items:center; margin-bottom:8px;
+  }
+  .team-row .num{
+    width:28px;height:28px;border-radius:50%;background:var(--aeg-red);color:#111;
+    font-weight:700; display:flex; align-items:center; justify-content:center; font-size:13px;
+    align-self:center;
+  }
+  .team-row-wrap{display:flex; gap:8px; align-items:center;}
+  .team-row-wrap > div{flex:1;}
+  button{
+    cursor:pointer; border:none; border-radius:8px; font-family:inherit; font-weight:600;
+    font-size:13px; padding:10px 15px; background:var(--card-2); color:var(--text);
+    border:1px solid var(--line); transition:border-color .15s ease, transform .1s ease, background .15s ease;
+  }
+  button:hover{border-color:var(--aeg-red); transform:translateY(-1px);}
+  button:active{transform:translateY(0);}
+  button.remove{background:transparent; color:var(--red); border:1px solid var(--line); padding:7px 10px;}
+  button.primary-btn{
+    background:linear-gradient(180deg, var(--aeg-red), var(--aeg-red-deep)); color:#fff; border:none;
+    font-size:16px; padding:15px 22px; width:100%; margin-top:10px; letter-spacing:0.04em;
+    text-transform:uppercase; font-family:'Oswald',sans-serif; box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  }
+  button.primary-btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+  button.secondary-btn{border-color:var(--aeg-red); color:var(--aeg-red); background:transparent;}
+  button.small-link-btn{
+    background:transparent; border:none; color:var(--text-dim); font-size:12px; font-weight:500;
+    padding:6px 10px; text-decoration:underline; text-underline-offset:3px;
+  }
+  button.small-link-btn:hover{color:var(--text); border-color:transparent;}
+
+  .mode-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media (max-width:820px){ .mode-grid{grid-template-columns:1fr;} }
+  .mode-card{
+    border:1.5px solid var(--line); background:var(--bg-alt); border-radius:10px; padding:13px 15px;
+    cursor:pointer; position:relative; transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .mode-card:hover{transform:translateY(-1px);}
+  .mode-card.selected{border-color:var(--aeg-red); background:rgba(20,102,230,0.09);}
+  .mode-card h3{font-size:15px; margin:0 0 4px; color:var(--text);}
+  .mode-card p{margin:0; font-size:12.5px; color:var(--text-dim);}
+
+  .tv-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;}
+  .pill{
+    display:inline-block; background:var(--card-2); border:1px solid var(--line); border-radius:20px;
+    padding:4px 12px; font-size:12px; color:var(--text-dim); margin-left:8px;
+  }
+
+  .round-block{margin-bottom:26px;}
+  .round-title{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:14px; letter-spacing:0.06em;
+    color:var(--aeg-red); border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:12px;
+  }
+  .matches-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px;}
+
+  .match-card{
+    background:var(--bg-alt); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+  }
+  .match-meta{display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-dim); margin-bottom:8px;}
+  .match-teams{display:flex; flex-direction:column; gap:6px; margin-bottom:8px;}
+  .team-line{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .team-line .name{font-size:14px; font-weight:600;}
+  .team-line.winner .name{color:var(--green);}
+  .team-line.loser .name{color:var(--text-dim); text-decoration:line-through; text-decoration-color:var(--line);}
+  .score-box{
+    width:46px; text-align:center; background:#0c0c0e; color:var(--aeg-red); border:1px solid var(--line);
+    border-radius:5px; font-family:'Oswald',sans-serif; font-size:17px; padding:4px 0;
+    font-variant-numeric:tabular-nums;
+  }
+  .score-box:disabled{color:var(--text); text-shadow:none; opacity:0.9;}
+  .score-readonly{
+    min-width:38px; text-align:center; background:#0c0c0e; color:var(--text); border:1px solid var(--line);
+    border-radius:5px; font-family:'Oswald',sans-serif; font-size:18px; padding:4px 10px;
+    font-variant-numeric:tabular-nums;
+  }
+  .match-card.overview{padding:16px;}
+  .match-card.overview .team-line .name{font-size:16px;}
+  .match-actions{display:flex; gap:6px; margin-top:8px;}
+  .match-actions button{flex:1; font-size:12px; padding:7px;}
+  .bye-tag{font-size:11px; color:var(--text-dim); font-style:italic;}
+  .match-card.placeholder-match{border-style:dashed; opacity:0.72;}
+  .placeholder-name{color:var(--text-dim); font-style:italic;}
+  .live-chip{
+    display:inline-flex; align-items:center; gap:6px; margin-left:8px; font-size:10.5px; font-weight:700;
+    letter-spacing:0.03em; color:var(--red); background:rgba(229,72,77,0.14); padding:2px 8px 2px 8px; border-radius:12px;
+  }
+  .live-timer{font-variant-numeric:tabular-nums; font-family:'Oswald',sans-serif; font-size:11.5px;}
+  .live-timer.overtime{color:#f5a623;}
+  .delay-tag{
+    display:inline-block; font-size:11px; font-weight:600; padding:1px 7px; border-radius:10px; margin-left:4px;
+  }
+  .delay-tag.late{color:#f5a623; background:rgba(245,166,35,0.14);}
+  .delay-tag.early{color:var(--green); background:rgba(51,196,107,0.14);}
+  button.start-btn{
+    width:100%; background:linear-gradient(180deg, var(--green), #279354); color:#0c1f14; border:none;
+    font-size:14px; padding:11px 15px; font-weight:700; letter-spacing:0.02em;
+  }
+  button.start-btn:hover{filter:brightness(1.08);}
+
+  /* Live-Scoreboard (laufender Punktestand während des Spiels) */
+  .live-scoreboard{
+    display:flex; align-items:center; justify-content:center; gap:14px; margin:10px 0;
+    background:#0c0c0e; border:1px solid var(--line); border-radius:10px; padding:12px 10px;
+  }
+  .live-score-team{display:flex; flex-direction:column; align-items:center; gap:6px; flex:1;}
+  .live-score-name{font-size:12px; color:var(--text-dim); text-align:center;}
+  .live-score-num{
+    font-family:'Oswald',sans-serif; font-size:34px; font-weight:700; color:#fff;
+    font-variant-numeric:tabular-nums; line-height:1;
+  }
+  .live-score-sep{font-family:'Oswald',sans-serif; font-size:22px; color:var(--text-dim);}
+  .live-score-btns{display:flex; gap:4px;}
+  .live-score-btns button{padding:5px 9px; font-size:12px;}
+  .final-score-label{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim);
+    margin:4px 0 6px;
+  }
+
+  /* Awards-Abstimmung */
+  .award-list{display:flex; flex-direction:column; gap:10px;}
+  .award-row{
+    position:relative; background:var(--bg-alt); border:1px solid var(--line); border-radius:10px;
+    overflow:hidden; padding:11px 14px;
+  }
+  .award-row.leader{border-color:#ffd23f;}
+  .award-bar{
+    position:absolute; top:0; left:0; bottom:0; background:rgba(20,102,230,0.14);
+    z-index:0; transition:width .3s ease;
+  }
+  .award-row-content{
+    position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between;
+    gap:10px; flex-wrap:wrap;
+  }
+  .award-name{font-weight:600; font-size:14.5px;}
+  .award-sub{color:var(--text-dim); font-size:12px; font-weight:400;}
+  .award-votes{font-family:'Oswald',sans-serif; color:var(--text-dim); font-size:13px; white-space:nowrap;}
+  .award-vote-btns{display:flex; gap:6px;}
+  .award-vote-btns button{padding:5px 11px; font-size:12px;}
+  .award-vote-btns .vote-plus{background:var(--aeg-red); color:#fff; border:none;}
+  .award-row-content > button.vote-plus{background:var(--aeg-red); color:#fff; border:none; padding:7px 14px; font-size:12.5px;}
+  .award-row.my-vote{border-color:var(--green);}
+  .my-vote-badge{color:var(--green); font-size:12.5px; font-weight:700; white-space:nowrap;}
+  .vote-done-note{
+    font-size:12.5px; color:var(--green); margin:-4px 0 10px; font-weight:600;
+  }
+
+  /* Team-Anmeldung */
+  .reg-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    background:var(--bg-alt); border:1px solid var(--line); border-radius:10px;
+    padding:10px 14px; margin-bottom:8px;
+  }
+  .reg-name{font-weight:600; font-size:14px;}
+  .reg-roster{font-size:12px; color:var(--text-dim); margin-top:2px;}
+  .reg-actions{display:flex; gap:6px;}
+  .reg-actions button{padding:6px 12px; font-size:12.5px;}
+  .approve-btn{background:var(--green); color:#0c1f14; border:none;}
+  .reject-btn{background:transparent; color:var(--red); border:1px solid var(--line);}
+
+  /* Teams-Tab: editierbare Teamliste */
+  .team-edit-header{
+    display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:8px; margin-bottom:6px;
+    font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-dim);
+  }
+  .team-edit-row{display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:8px; margin-bottom:8px;}
+
+  table.standings{width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:10px;}
+  table.standings th, table.standings td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left;}
+  table.standings th{color:var(--text-dim); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:0.03em;}
+  table.standings td.num{text-align:center; font-variant-numeric:tabular-nums;}
+  table.standings tr.qualify td{color:var(--green);}
+
+  .group-wrap{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  @media (max-width:820px){ .group-wrap{grid-template-columns:1fr;} }
+
+  .info-box{
+    background:rgba(20,102,230,0.09); border:1px solid rgba(20,102,230,0.3); border-radius:8px;
+    padding:10px 14px; font-size:13px; color:var(--text-dim); margin-bottom:16px;
+  }
+  .center-note{text-align:center; color:var(--text-dim); font-size:13px; padding:20px;}
+
+  /* Spielplan-Übersicht (wer spielt wann & wo) */
+  table.schedule-table td, table.schedule-table th{font-size:13px;}
+  table.schedule-table td:first-child{font-family:'Oswald',sans-serif; font-size:15px; color:var(--aeg-red); white-space:nowrap;}
+  select{
+    background:var(--bg-alt); border:1px solid var(--line); color:var(--text);
+    padding:8px 10px; border-radius:6px; font-family:inherit; font-size:13px;
+  }
+  select:focus{outline:none; border-color:var(--aeg-red);}
+
+  /* Tabs (Spielplan / Turnierbaum) als Segmented Control */
+  .tab-bar{
+    display:inline-flex; gap:4px; margin-bottom:18px; background:var(--bg-alt);
+    border:1px solid var(--line); border-radius:10px; padding:4px;
+  }
+  .tab-btn{
+    background:transparent; border:none; border-radius:7px;
+    padding:8px 16px; color:var(--text-dim); font-family:'Oswald',sans-serif;
+    text-transform:uppercase; letter-spacing:0.04em; font-size:13.5px; transition:all .15s ease;
+  }
+  .tab-btn.active{color:#fff; background:var(--aeg-red);}
+  .tab-btn:hover:not(.active){color:var(--text); border-color:var(--line);}
+
+  /* Editieren / Übersicht Modus-Umschalter */
+  .mode-switch-wrap{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;}
+  .mode-switch{
+    display:inline-flex; gap:4px; background:var(--bg-alt); border:1px solid var(--line);
+    border-radius:10px; padding:4px;
+  }
+  .mode-switch-btn{
+    background:transparent; border:none; border-radius:7px; padding:8px 16px;
+    color:var(--text-dim); font-family:'Oswald',sans-serif; text-transform:uppercase;
+    letter-spacing:0.03em; font-size:13px; transition:all .15s ease;
+  }
+  .mode-switch-btn.active.edit{color:#fff; background:var(--card-2); box-shadow:0 4px 14px rgba(0,0,0,0.3);}
+  .mode-switch-btn.active.overview{color:#161616; background:var(--green);}
+  .mode-switch-btn:hover:not(.active){color:var(--text);}
+  .overview-banner{
+    display:inline-flex; align-items:center; gap:8px; background:rgba(51,196,107,0.1);
+    border:1px solid rgba(51,196,107,0.35); color:var(--green); padding:6px 14px; border-radius:20px;
+    font-size:12.5px; font-weight:600;
+  }
+
+  /* Turnierbaum */
+  .bracket-tree{position:relative; display:flex; gap:46px; overflow-x:auto; padding:6px 4px 16px;}
+  .tree-col{display:flex; flex-direction:column; min-width:230px; flex:none;}
+  .tree-col-title{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:12px; letter-spacing:0.06em;
+    color:var(--aeg-red); text-align:center; margin-bottom:10px;
+  }
+  .tree-col-matches{display:flex; flex-direction:column; justify-content:space-around; flex:1; gap:10px;}
+  .tree-match-wrap{display:flex; align-items:center;}
+  .tree-match-wrap .match-card{width:100%;}
+  .bracket-lines{position:absolute; top:0; left:0; pointer-events:none; overflow:visible;}
+
+  /* "Läuft jetzt" – immer oben angeheftete, große Live-Leiste */
+  .live-topbar{
+    position:sticky; top:12px; z-index:20; margin-bottom:18px;
+  }
+  .live-big-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:12px;
+  }
+  .live-big-card{
+    background:linear-gradient(165deg, #17181c, #0c0c0e);
+    border:1.5px solid rgba(229,72,77,0.45); border-radius:16px; padding:16px 20px;
+    box-shadow:0 12px 34px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2);
+  }
+  .live-big-top{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .live-pulse-dot{
+    width:10px; height:10px; border-radius:50%; background:var(--red); flex:none;
+    animation:live-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes live-pulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(229,72,77,0.55); }
+    50%{ box-shadow:0 0 0 7px rgba(229,72,77,0); }
+  }
+  .live-big-label{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.08em; font-size:12.5px;
+    font-weight:700; color:var(--red);
+  }
+  .live-timer-big{
+    margin-left:auto; font-family:'Oswald',sans-serif; font-size:20px; font-weight:700;
+    color:#fff; font-variant-numeric:tabular-nums;
+  }
+  .live-timer-big.overtime{color:#f5a623;}
+  .live-big-score{display:flex; align-items:center; justify-content:center; gap:14px;}
+  .live-big-team{font-size:15px; font-weight:600; flex:1; text-align:center;}
+  .live-big-num{
+    font-family:'Oswald',sans-serif; font-size:48px; font-weight:700; color:#fff;
+    font-variant-numeric:tabular-nums; line-height:1; min-width:52px; text-align:center;
+  }
+  .live-big-sep{font-family:'Oswald',sans-serif; font-size:28px; color:var(--text-dim);}
+  .live-next-strip{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px;
+    background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 16px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  }
+  .live-badge{
+    display:inline-block; font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.04em;
+    font-size:12px; font-weight:700; padding:4px 11px; border-radius:20px; flex:none;
+  }
+  .live-badge.live-next{background:rgba(20,102,230,0.14); color:var(--aeg-red);}
+  .live-match{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .live-time{font-family:'Oswald',sans-serif; font-size:13px; color:var(--text-dim);}
+  .live-teams{font-size:15px; font-weight:600;}
+  .live-teams .vs{color:var(--text-dim); font-weight:400; margin:0 4px;}
+  .live-label{font-size:12px; color:var(--text-dim);}
+
+  /* Sieger-Banner */
+  .champion-banner{
+    display:flex; align-items:center; gap:16px; margin-bottom:18px; padding:20px 24px; border-radius:14px;
+    background:linear-gradient(120deg, rgba(255,210,63,0.14), rgba(20,102,230,0.10));
+    border:1px solid rgba(255,210,63,0.35); box-shadow:0 8px 28px rgba(0,0,0,0.28);
+  }
+  .champion-trophy{font-size:42px; line-height:1;}
+  .champion-label{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.1em; font-size:12px;
+    color:#ffd23f; font-weight:700;
+  }
+  .champion-name{font-family:'Oswald',sans-serif; font-size:26px; font-weight:700; margin-top:2px;}
+
+  /* Konfetti */
+  .confetti-layer{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:200;}
+  .confetti-piece{
+    position:absolute; top:-24px; width:8px; height:14px; opacity:0.9;
+    animation-name:confetti-fall; animation-timing-function:ease-in; animation-fill-mode:forwards;
+  }
+  @keyframes confetti-fall{
+    to{ transform:translateY(110vh) rotate(600deg); opacity:0.25; }
+  }
+
+  @media print{
+    button, #setupView, .tv-header button{display:none !important;}
+    body{background:white; color:black;}
+    .card, .match-card, .mode-card{border-color:#ccc; background:white;}
+  }
+</style>
+</head>
+<body>
+<div class="bg-decor" aria-hidden="true">
+  <svg class="ball-a" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="3.5">
+    <circle cx="100" cy="100" r="96"/>
+    <path d="M4,100 H196"/>
+    <path d="M100,4 V196"/>
+    <path d="M100,4 C64,40 64,160 100,196"/>
+    <path d="M100,4 C136,40 136,160 100,196"/>
+  </svg>
+  <svg class="ball-b" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="3.5">
+    <circle cx="100" cy="100" r="96"/>
+    <path d="M4,100 H196"/>
+    <path d="M100,4 V196"/>
+    <path d="M100,4 C64,40 64,160 100,196"/>
+    <path d="M100,4 C136,40 136,160 100,196"/>
+  </svg>
+  <svg class="ball-c" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="3.5">
+    <circle cx="100" cy="100" r="96"/>
+    <path d="M4,100 H196"/>
+    <path d="M100,4 V196"/>
+    <path d="M100,4 C64,40 64,160 100,196"/>
+    <path d="M100,4 C136,40 136,160 100,196"/>
+  </svg>
+  <svg class="ball-d" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="3.5">
+    <circle cx="100" cy="100" r="96"/>
+    <path d="M4,100 H196"/>
+    <path d="M100,4 V196"/>
+    <path d="M100,4 C64,40 64,160 100,196"/>
+    <path d="M100,4 C136,40 136,160 100,196"/>
+  </svg>
+</div>
+<div class="app">
+
+  <header class="top">
+    <div class="logo-badge">
+      <img src="data:image/png;base64,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" alt="AEG Logo" class="logo-emblem-img">
+    </div>
+    <div class="brand-block">
+      <span class="eyebrow">AEG · Uber Arena Berlin</span>
+      <h1>3×3 Basketball Cup</h1>
+      <p>Turnierplaner mit Spielplan, Uhrzeiten und Turnierbaum.</p>
+    </div>
+    <div class="header-corner">
+      <button onclick="toggleHeaderLogin()" class="small-link-btn" id="headerAdminBtn">🔒 Veranstalter</button>
+      <div id="headerLoginPanel" class="header-login-panel" style="display:none;">
+        <input type="password" id="headerPasswordInput" placeholder="Passwort" onkeydown="if(event.key==='Enter')headerAdminLogin()">
+        <button onclick="headerAdminLogin()" class="primary-btn">Los</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== PLACEHOLDER VIEW (kein Turnier aktiv, kein Admin) ===================== -->
+  <section id="placeholderView" style="display:none">
+    <div class="card full" style="text-align:center; padding:56px 24px;">
+      <h2>🏀 Turnier startet bald</h2>
+      <p style="color:var(--text-dim); max-width:420px; margin:8px auto 0;">
+        Die Turnierleitung bereitet gerade alles vor. Schaut gleich nochmal vorbei, oder meldet euer Team schon jetzt an.
+      </p>
+      <button onclick="showRegisterView()" class="primary-btn" style="max-width:280px; margin:20px auto 0;">🙋 Team anmelden</button>
+    </div>
+  </section>
+
+  <!-- ===================== REGISTER VIEW (Team-Anmeldung) ===================== -->
+  <section id="registerView" style="display:none">
+    <div style="margin-bottom:14px;">
+      <button onclick="showMain()">← Zurück</button>
+    </div>
+    <div class="setup-grid">
+      <div class="card">
+        <h2>🙋 Team-Anmeldung</h2>
+        <p style="font-size:12px;color:var(--text-dim);margin-top:-6px;">
+          Teamname und Teamhead (Kontaktperson) sind Pflicht – die Turnierleitung schaltet euch frei.
+        </p>
+        <div class="team-row-wrap">
+          <div><input type="text" id="regTeamName" placeholder="Teamname *"></div>
+          <div><input type="text" id="regTeamHead" placeholder="Teamhead / Kontaktperson *"></div>
+        </div>
+        <label for="regTeamRoster">Spieler (optional, mit Komma trennen)</label>
+        <input type="text" id="regTeamRoster" placeholder="z.B. Max, Lisa, Tom">
+        <button onclick="submitRegistration()" class="primary-btn" style="margin-top:8px;">📝 Anmelden</button>
+        <p id="regConfirm" class="vote-done-note" style="display:none; margin-top:10px;">✓ Danke, eure Anmeldung ist eingegangen!</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SETUP VIEW ===================== -->
+  <section id="setupView" style="display:none">
+    <div style="margin-bottom:14px;">
+      <button onclick="showMain()">← Zurück</button>
+    </div>
+
+    <div class="setup-grid">
+      <div class="card">
+        <h2>1. Rahmendaten</h2>
+        <label for="tName">Turniername</label>
+        <input type="text" id="tName" value="AEG 3×3 Basketball Cup 2026">
+
+        <div class="team-row-wrap">
+          <div>
+            <label for="tStart">Startzeit</label>
+            <input type="time" id="tStart" value="10:00">
+          </div>
+          <div>
+            <label for="tDuration">Spieldauer (Min.)</label>
+            <input type="number" id="tDuration" value="12" min="5">
+          </div>
+        </div>
+        <div class="team-row-wrap">
+          <div>
+            <label for="tCourts">Anzahl Felder / Courts</label>
+            <input type="number" id="tCourts" value="2" min="1">
+          </div>
+          <div>
+            <label for="tPause">Pause zw. Spielen (Min.)</label>
+            <input type="number" id="tPause" value="3" min="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="card full">
+        <h2>☁️ Geräte-Synchronisierung <span class="pill" id="syncStatusPill">nicht verbunden</span></h2>
+        <p style="font-size:12px;color:var(--text-dim);margin-top:-6px;">
+          Optional: Verbindet alle Geräte (Handys, Tablet an der Anmeldung, Beamer) über denselben Raum-Code, damit Anmeldungen, Ergebnisse und Live-Stände überall gleichzeitig sichtbar sind.
+        </p>
+        <div class="team-row-wrap">
+          <div><input type="text" id="sbUrl" placeholder="Supabase Projekt-URL"></div>
+          <div><input type="text" id="sbKey" placeholder="Supabase anon public Key"></div>
+          <div><input type="text" id="sbRoom" placeholder="Raum-Code (frei wählbar, z.B. AEG2026)"></div>
+        </div>
+        <button onclick="connectSupabase()" class="secondary-btn" style="margin-top:8px;">🔗 Verbinden</button>
+        <p id="syncStatusText" class="center-note" style="display:none;"></p>
+      </div>
+
+      <div class="card full">
+        <h2>🙋 Offene Anmeldungen <span class="pill" id="pendingCountPill">0 offen</span></h2>
+        <p style="font-size:12px;color:var(--text-dim);margin-top:-6px;">
+          Teams, die sich auf der Anmeldeseite eingetragen haben – gib sie hier frei, dann landen sie unten in der Teamliste.
+        </p>
+        <div id="registrationList" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <h2>2. Teams <span class="pill" id="teamCountPill">0 Teams</span></h2>
+        <p style="font-size:12px;color:var(--text-dim);margin-top:-6px;">
+          Gespielt wird 3 gegen 3 – der Kader darf aber bis zu 5 Spieler:innen haben (Wechsel erlaubt).
+        </p>
+        <div id="teamList"></div>
+        <button onclick="addTeamRow()">+ Team hinzufügen</button>
+      </div>
+
+      <div class="card mode-card full">
+        <h2>3. Turniermodus wählen</h2>
+        <div class="mode-grid" id="modeGrid"></div>
+        <div id="modeExtra" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <div id="setupError" style="color:var(--red); font-size:13px; margin-top:6px;"></div>
+    <button class="primary-btn" onclick="startTournament()">🏀 Turnier erstellen</button>
+  </section>
+
+  <!-- ===================== TOURNAMENT VIEW ===================== -->
+  <section id="tournamentView" style="display:none">
+    <div class="tv-header">
+      <div>
+        <h2 id="tvTitle" style="margin-bottom:2px;"></h2>
+        <span class="pill" id="tvModePill"></span>
+        <span class="pill" id="tvTeamsPill"></span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="window.print()">🖨 Drucken</button>
+        <button id="resetBtn" onclick="resetTournament()">↺ Neues Turnier</button>
+      </div>
+    </div>
+    <div id="tvContent"></div>
+  </section>
+
+</div>
+
+<script>
+/* ============================================================
+   DATENMODELL
+   ============================================================ */
+const MODES = [
+  { id:'ko',       title:'K.O.-System',            desc:'Wer verliert, ist raus. Klassischer Turnierbaum – schnell, ideal bei vielen Teams / wenig Zeit.' },
+  { id:'liga',     title:'Rundenturnier (Liga)',    desc:'Jeder gegen jeden, Tabelle nach Siegen. Fair, aber mehr Spiele nötig.' },
+  { id:'doppelko', title:'Doppel-K.O.',             desc:'Jedes Team bekommt nach der ersten Niederlage eine zweite Chance in der Verlierer-Runde (vereinfachte Variante).' },
+  { id:'gruppen',  title:'Gruppenphase + Playoffs', desc:'Erst Gruppen im Rundensystem, dann K.O.-Playoffs mit den besten Teams je Gruppe.' },
+  { id:'schweiz',  title:'Schweizer System',        desc:'Mehrere Runden, in denen ähnlich starke Teams gegeneinander spielen. Niemand fliegt sofort raus.' },
+];
+
+// Individuelle Trophäen, die nach Abschluss der Gruppenphase freigeschaltet werden.
+// type:'player' -> Kandidat:innen sind einzelne Spieler:innen aus den Kadern, 'team' -> ganze Teams.
+const AWARD_CATEGORIES = [
+  { key:'mvp',       title:'🏀 Bester Spieler (MVP)', type:'player' },
+  { key:'effort',    title:'💪 Bester Einsatz',        type:'player' },
+  { key:'fanPlayer', title:'❤️ Sieger der Herzen',     type:'player' },
+  { key:'fanTeam',   title:'🧡 Team der Herzen',       type:'team' },
+];
+
+let state = null; // wird bei startTournament() neu aufgebaut
+
+function freshState(){
+  const awardVotes = {};
+  AWARD_CATEGORIES.forEach(c => { awardVotes[c.key] = {}; });
+  return {
+    name:'', startMin:0, duration:12, pause:3, courts:2,
+    mode:'ko', championCelebrated:false,
+    teams:[],           // {id, name, roster, color}
+    matches:[],         // alle Spiele, siehe makeMatch()
+    matchSeq:1,
+    nextTimeMin:0,       // Zeiger für die Zeitplanung (Minuten seit Start)
+    // modusabhängige Zusatzinfos:
+    groups:null,         // { A:[team,...], B:[...] }
+    numGroups:2,
+    playoffsGenerated:false,
+    playoffPreviewBuilt:false, // true = Playoff-Zeiten/-Struktur stehen schon mit Platzhalter-Namen fest
+    thirdPlace:false, // Spiel um Platz 3 gewünscht? (nur relevant bei 'ko' und 'gruppen')
+    awards:{ votes: awardVotes }, // Trophäen-Abstimmung, wird nach Ende der Gruppenphase freigeschaltet
+    doppel:{ lbPending:[], lbRoundNum:0, wbChampion:null, lbChampion:null, grandFinal:null, finished:false },
+    swiss:{ totalRounds:3, currentRound:0 }
+  };
+}
+
+/* ============================================================
+   SETUP-BILDSCHIRM: Teams & Modus
+   ============================================================ */
+let teamRowSeq = 1;
+function addTeamRow(name, roster, contact){
+  const id = teamRowSeq++;
+  const wrap = document.getElementById('teamList');
+  const row = document.createElement('div');
+  row.className = 'team-row';
+  row.dataset.rowId = id;
+  row.innerHTML = `
+    <input type="text" placeholder="Teamname" value="${name?escapeHtml(name):''}" class="row-name">
+    <input type="text" placeholder="Teamhead / Kontakt" value="${contact?escapeHtml(contact):''}" class="row-contact">
+    <input type="text" placeholder="Spieler (bis zu 5, mit Komma trennen)" value="${roster?escapeHtml(roster):''}" class="row-roster">
+    <button class="remove" onclick="removeTeamRow(${id})">✕</button>
+  `;
+  wrap.appendChild(row);
+  updateTeamCountPill();
+}
+function removeTeamRow(id){
+  const row = document.querySelector(`.team-row[data-row-id="${id}"]`);
+  if(row) row.remove();
+  updateTeamCountPill();
+}
+function updateTeamCountPill(){
+  const n = document.querySelectorAll('.team-row').length;
+  document.getElementById('teamCountPill').textContent = n + (n===1?' Team':' Teams');
+}
+
+/* ---------- Team-Anmeldung: öffentlich auf der Landing-Page, Freigabe nur im Veranstalter-Bereich ----------
+   Die Anmeldung selbst ist für alle offen (Landing-Page). Freigegeben werden die Anmeldungen nur im
+   Setup-Bildschirm, den man ohne das Veranstalter-Passwort gar nicht erst sieht (siehe headerAdminLogin()).
+   Wichtig zu wissen: Das Passwort lebt rein im Arbeitsspeicher dieses einen offenen Browser-Tabs,
+   kein Server, kein Account-System. Für echten Mehrgeräte-Zugriffsschutz bräuchte es Supabase
+   (siehe TODO weiter unten bei der Awards-Abstimmung). */
+let regSeq = 1;
+let pendingRegistrations = [];
+
+function submitRegistration(){
+  const nameEl = document.getElementById('regTeamName');
+  const headEl = document.getElementById('regTeamHead');
+  const rosterEl = document.getElementById('regTeamRoster');
+  const name = nameEl.value.trim();
+  const teamHead = headEl.value.trim();
+  if(!name){ alert('Bitte einen Teamnamen eingeben.'); return; }
+  if(!teamHead){ alert('Bitte einen Teamhead / eine Kontaktperson eingeben.'); return; }
+  pendingRegistrations.push({ id: regSeq++, name, teamHead, roster: rosterEl.value.trim() });
+  nameEl.value = '';
+  headEl.value = '';
+  rosterEl.value = '';
+  renderRegistrationList();
+  const confirm = document.getElementById('regConfirm');
+  if(confirm) confirm.style.display = 'block';
+  maybeSyncPush();
+}
+
+function approveRegistration(id){
+  if(!isAdminSession) return; // nur Veranstalter:in darf freigeben
+  const idx = pendingRegistrations.findIndex(r => r.id===id);
+  if(idx===-1) return;
+  const reg = pendingRegistrations[idx];
+  pendingRegistrations.splice(idx,1);
+  if(state){
+    // Turnier läuft schon: Team direkt in die Teamliste (Roster) aufnehmen. Landet NICHT
+    // automatisch im bereits erzeugten Spielplan/Turnierbaum – siehe Hinweis im Teams-Tab.
+    state.teams.push({
+      id: 't_late_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+      name: reg.name, roster: reg.roster || '', contact: reg.teamHead || ''
+    });
+    renderTournament();
+  } else {
+    addTeamRow(reg.name, reg.roster, reg.teamHead); // landet als ganz normale, editierbare Zeile in der Teamliste
+    renderRegistrationList();
+  }
+  maybeSyncPush();
+}
+
+function rejectRegistration(id){
+  if(!isAdminSession) return; // nur Veranstalter:in darf ablehnen
+  pendingRegistrations = pendingRegistrations.filter(r => r.id!==id);
+  if(state) renderTournament(); else renderRegistrationList();
+  maybeSyncPush();
+}
+
+function renderRegistrationList(){
+  const pill = document.getElementById('pendingCountPill');
+  if(pill) pill.textContent = pendingRegistrations.length + ' offen';
+  const box = document.getElementById('registrationList');
+  if(!box) return;
+  if(pendingRegistrations.length===0){
+    box.innerHTML = `<p class="center-note">Noch keine Anmeldungen.</p>`;
+    return;
+  }
+  box.innerHTML = pendingRegistrations.map(r => `
+    <div class="reg-row">
+      <div class="reg-info">
+        <div class="reg-name">${escapeHtml(r.name)}</div>
+        <div class="reg-roster">Teamhead: ${escapeHtml(r.teamHead)}</div>
+        ${r.roster ? `<div class="reg-roster">${escapeHtml(r.roster)}</div>` : ''}
+      </div>
+      <div class="reg-actions">
+        <button onclick="approveRegistration(${r.id})" class="approve-btn">✓ Zulassen</button>
+        <button onclick="rejectRegistration(${r.id})" class="reject-btn">✕ Ablehnen</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ---------- Landing-Page: Einstieg als Gast oder als Veranstalter:in ----------
+   adminPassword wird beim ALLERERSTEN erfolgreichen Veranstalter-Login dieser Sitzung
+   festgelegt (wer immer zuerst ein Passwort eingibt, bestimmt es) und lebt danach nur im
+   Arbeitsspeicher dieses einen offenen Tabs weiter – kein Server, kein Account-System.
+   isAdminSession merkt sich für den Rest der Sitzung, dass man sich bereits ausgewiesen hat. */
+let adminPassword = null;
+let isAdminSession = false;
+
+// Sobald ein Turnier existiert (läuft bereits), ist die Anmeldung geschlossen – der Link führt
+// dann nicht mehr zur Anmeldeseite, sondern direkt zur laufenden Turnieransicht ("Mainscreen").
+// Zentrale Routing-Funktion: entscheidet anhand von state (existiert ein Turnier?) und
+// isAdminSession (ist man eingeloggt?), welcher der vier Screens gezeigt wird. Wird von
+// praktisch jeder Navigations-/Login-/Reset-Aktion aufgerufen, statt an jeder Stelle einzeln
+// display-Styles zu setzen.
+function routeInitialView(){
+  ['registerView','setupView','tournamentView','placeholderView'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  if(state){
+    document.getElementById('tournamentView').style.display = 'block';
+    setViewMode(isAdminSession ? 'edit' : 'overview');
+    startLiveTimerTick();
+  } else if(isAdminSession){
+    document.getElementById('setupView').style.display = 'block';
+    renderRegistrationList();
+  } else {
+    document.getElementById('placeholderView').style.display = 'block';
+  }
+}
+
+function showRegisterView(){
+  ['setupView','tournamentView','placeholderView'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  document.getElementById('registerView').style.display = 'block';
+}
+
+function showMain(){
+  document.getElementById('registerView').style.display = 'none';
+  routeInitialView();
+}
+
+function toggleHeaderLogin(){
+  const panel = document.getElementById('headerLoginPanel');
+  if(!panel) return;
+  panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
+}
+
+function headerAdminLogin(){
+  const input = document.getElementById('headerPasswordInput').value;
+  if(!adminPassword){
+    if(!input){ alert('Bitte ein Passwort für den Veranstalter-Zugang festlegen.'); return; }
+    adminPassword = input; // erster Login dieser Sitzung legt das Passwort fest
+  } else if(input !== adminPassword){
+    alert('Falsches Passwort.');
+    return;
+  }
+  isAdminSession = true;
+  document.getElementById('headerPasswordInput').value = '';
+  document.getElementById('headerLoginPanel').style.display = 'none';
+  const btn = document.getElementById('headerAdminBtn');
+  if(btn) btn.textContent = '✅ Veranstalter:in';
+  routeInitialView();
+}
+
+/* ============================================================
+   SUPABASE-SYNCHRONISIERUNG (optional, geräteübergreifend)
+   ============================================================
+   Strategie: statt jede einzelne Aktion (Ergebnis, Anmeldung, Freigabe, ...) separat zu
+   übertragen, wird der GESAMTE relevante Zustand ({state, pendingRegistrations, regSeq})
+   als ein einziges JSON-Objekt in eine Supabase-Tabelle "sessions" geschrieben – ein
+   Datensatz pro "Raum-Code". Jedes verbundene Gerät abonniert Realtime-Änderungen auf genau
+   diesem Datensatz und übernimmt eingehende Stände 1:1. Das ist robuster als hunderte
+   Einzel-Updates zu synchronisieren, weil die komplette Turnierlogik (Freilose, Verzug,
+   Platzierungsspiele, ...) unverändert lokal weiterläuft – nur der fertige Zustand wird geteilt.
+
+   Bewusst NICHT mitsynchronisiert: adminPassword (bleibt lokal, sonst könnte jede:r mit
+   Lesezugriff auf die Tabelle das Veranstalter-Passwort mitlesen), viewMode/activeTab/
+   teamFilter (reine Anzeige-Einstellung pro Gerät), myVoteChoices (soll ja gerade PRO
+   BESUCH lokal bleiben, das war extra so gewünscht).
+
+   Nötige Supabase-Tabelle (einmalig im SQL-Editor des Supabase-Projekts ausführen):
+
+     create table sessions (
+       room_code text primary key,
+       data jsonb not null default '{}'::jsonb,
+       updated_at timestamptz not null default now()
+     );
+     alter table sessions enable row level security;
+     create policy "public read"   on sessions for select using (true);
+     create policy "public insert" on sessions for insert with check (true);
+     create policy "public update" on sessions for update using (true);
+     alter publication supabase_realtime add table sessions;
+
+   Die Policies sind bewusst offen (kein Login-System) – wer den Raum-Code kennt, kann lesen
+   UND schreiben. Das ist derselbe "weiche" Vertrauens-Ansatz wie beim Veranstalter-Passwort,
+   nur eben geräteübergreifend statt nur im eigenen Browser-Tab.
+
+   AUTO-CONNECT: Trag hier einmalig eure Projekt-Daten ein, damit JEDE Person, die den Link
+   öffnet, automatisch verbunden ist und sofort den aktuellen Turnierstand sieht – ganz ohne
+   manuelles Eintragen. Nur die öffentlichen anon/publishable-Daten eintragen, NIEMALS den
+   "service_role"/secret Key! Bleibt eines der drei Felder leer, wird einfach nicht automatisch
+   verbunden (alles läuft dann wie gehabt lokal im Browser-Tab, bis jemand im Setup-Bildschirm
+   manuell verbindet).
+   ============================================================ */
+const DEFAULT_SUPABASE_URL = 'https://qvpntebszoaanlurbqzq.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'sb_publishable_eERBI_jUGI2CzCWFgAZesQ_08i08Qs1';
+const DEFAULT_ROOM_CODE = 'AEG2026';
+
+let supabaseClient = null;
+let syncRoomCode = null;
+let syncEnabled = false;
+let syncPushTimer = null;
+let lastKnownSyncJSON = null; // verhindert Endlosschleifen (eigener Push löst eigenen Realtime-Event aus)
+
+function buildSyncSnapshot(){
+  return { state, pendingRegistrations, regSeq };
+}
+
+function toggleSyncPanel(){
+  const card = document.getElementById('syncCard');
+  if(!card) return;
+  card.style.display = (card.style.display === 'none') ? 'block' : 'none';
+}
+
+// Verbindet automatisch beim Laden der Seite, falls DEFAULT_SUPABASE_* oben ausgefüllt sind –
+// füllt dafür die (versteckten, im Setup-Bildschirm liegenden) Eingabefelder und ruft
+// dieselbe connectSupabase()-Logik auf wie ein manueller Klick auf "Verbinden".
+async function autoConnectSupabase(){
+  if(!DEFAULT_SUPABASE_URL || !DEFAULT_SUPABASE_KEY || !DEFAULT_ROOM_CODE) return;
+  const urlEl = document.getElementById('sbUrl');
+  const keyEl = document.getElementById('sbKey');
+  const roomEl = document.getElementById('sbRoom');
+  if(!urlEl || !keyEl || !roomEl) return;
+  urlEl.value = DEFAULT_SUPABASE_URL;
+  keyEl.value = DEFAULT_SUPABASE_KEY;
+  roomEl.value = DEFAULT_ROOM_CODE;
+  await connectSupabase();
+}
+
+async function connectSupabase(){
+  const url = document.getElementById('sbUrl').value.trim();
+  const key = document.getElementById('sbKey').value.trim();
+  const room = document.getElementById('sbRoom').value.trim();
+  const statusPill = document.getElementById('syncStatusPill');
+  const statusText = document.getElementById('syncStatusText');
+  if(!url || !key || !room){ alert('Bitte Projekt-URL, Key und Raum-Code eingeben.'); return; }
+  if(typeof supabase === 'undefined'){
+    alert('Die Supabase-Bibliothek konnte nicht geladen werden. Prüfe die Internetverbindung und lade die Seite neu.');
+    return;
+  }
+  try{
+    supabaseClient = supabase.createClient(url, key);
+    syncRoomCode = room;
+
+    const { data, error } = await supabaseClient
+      .from('sessions').select('data').eq('room_code', room).maybeSingle();
+    if(error) throw error;
+
+    if(data && data.data && Object.keys(data.data).length){
+      applyRemoteSnapshot(data.data);
+      routeInitialView();
+    } else {
+      const snap = buildSyncSnapshot();
+      lastKnownSyncJSON = JSON.stringify(snap);
+      const { error: upsertErr } = await supabaseClient
+        .from('sessions').upsert({ room_code: room, data: snap, updated_at: new Date().toISOString() });
+      if(upsertErr) throw upsertErr;
+    }
+
+    supabaseClient
+      .channel('room:' + room)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions', filter: `room_code=eq.${room}` },
+        (payload) => { if(payload.new && payload.new.data) applyRemoteSnapshot(payload.new.data); })
+      .subscribe();
+
+    syncEnabled = true;
+    if(statusPill) statusPill.textContent = '✅ verbunden: ' + room;
+    if(statusText){ statusText.style.display = 'block'; statusText.textContent = 'Alle Geräte mit demselben Raum-Code sehen jetzt denselben Stand.'; }
+  } catch(err){
+    syncEnabled = false;
+    if(statusPill) statusPill.textContent = 'nicht verbunden';
+    if(statusText){ statusText.style.display = 'block'; statusText.textContent = '❌ Verbindung fehlgeschlagen: ' + (err && err.message ? err.message : err); }
+  }
+}
+
+// Wendet einen von einem ANDEREN Gerät empfangenen (oder beim Verbinden geladenen) Stand an.
+function applyRemoteSnapshot(snap){
+  lastKnownSyncJSON = JSON.stringify(snap); // merken, damit render() das nicht direkt zurückpusht
+  state = snap.state || null;
+  pendingRegistrations = snap.pendingRegistrations || [];
+  regSeq = snap.regSeq || regSeq;
+
+  const onRegister = document.getElementById('registerView').style.display !== 'none';
+  const onSetup = document.getElementById('setupView').style.display !== 'none';
+  const onTournament = document.getElementById('tournamentView').style.display !== 'none';
+  const onPlaceholder = document.getElementById('placeholderView').style.display !== 'none';
+
+  if(onTournament || onPlaceholder){
+    // Hauptbereich sichtbar -> neu routen (z.B. wenn das Turnier auf einem anderen Gerät
+    // gerade erst erstellt oder zurückgesetzt wurde)
+    routeInitialView();
+  } else if(onSetup){
+    renderRegistrationList();
+  }
+  // auf der Anmelde-Seite selbst gibt es nichts Dynamisches nachzuziehen
+}
+
+// Wird nach jeder relevanten lokalen Änderung aufgerufen; schickt (leicht verzögert, damit
+// schnell aufeinanderfolgende Änderungen nicht einzeln raushämmern) den aktuellen Stand raus –
+// aber nur, wenn er sich seit dem letzten bekannten Stand wirklich verändert hat.
+function maybeSyncPush(){
+  if(!syncEnabled) return;
+  clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(pushSyncIfChanged, 400);
+}
+
+async function pushSyncIfChanged(){
+  if(!syncEnabled || !supabaseClient) return;
+  const snap = buildSyncSnapshot();
+  const json = JSON.stringify(snap);
+  if(json === lastKnownSyncJSON) return; // nichts Neues (z.B. nur durch ein eingehendes Update ausgelöst)
+  lastKnownSyncJSON = json;
+  try{
+    await supabaseClient
+      .from('sessions')
+      .upsert({ room_code: syncRoomCode, data: snap, updated_at: new Date().toISOString() });
+  } catch(err){
+    console.error('Supabase-Sync fehlgeschlagen:', err);
+  }
+}
+
+function renderModeGrid(){
+  const grid = document.getElementById('modeGrid');
+  grid.innerHTML = MODES.map(m => `
+    <div class="mode-card ${m.id==='ko'?'selected':''}" data-mode="${m.id}" onclick="selectMode('${m.id}')">
+      <h3>${m.title}</h3>
+      <p>${m.desc}</p>
+    </div>
+  `).join('');
+  selectedMode = 'ko';
+  renderModeExtra();
+}
+let selectedMode = 'ko';
+function selectMode(id){
+  selectedMode = id;
+  document.querySelectorAll('.mode-card').forEach(c=>{
+    c.classList.toggle('selected', c.dataset.mode===id);
+  });
+  renderModeExtra();
+}
+function renderModeExtra(){
+  const box = document.getElementById('modeExtra');
+  let html = '';
+  if(selectedMode==='schweiz'){
+    html += `<label for="swissRoundsInput">Anzahl Runden (empfohlen: 3–5)</label>
+      <input type="number" id="swissRoundsInput" value="3" min="2" style="max-width:120px;">`;
+  } else if(selectedMode==='gruppen'){
+    html += `<label for="numGroupsInput">Anzahl Gruppen</label>
+      <input type="number" id="numGroupsInput" value="2" min="2" style="max-width:120px;">`;
+  }
+  if(selectedMode==='ko' || selectedMode==='gruppen'){
+    html += `<label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:14px;">
+      <input type="checkbox" id="thirdPlaceInput" style="width:auto;">
+      🥉 Platzierungsspiele (Platz 3, bei 8 Teams zusätzlich Platz 5 &amp; 7)
+    </label>`;
+  }
+  box.innerHTML = html;
+}
+
+/* ============================================================
+   HILFSFUNKTIONEN
+   ============================================================ */
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function nextPow2(n){ let p=1; while(p<n) p*=2; return p; }
+function parseTimeToMin(hhmm){
+  const [h,m] = hhmm.split(':').map(Number);
+  return h*60+m;
+}
+function formatMin(totalMin){
+  const h = Math.floor(totalMin/60)%24;
+  const m = totalMin%60;
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+}
+
+/* ============================================================
+   SPIEL-OBJEKTE
+   ============================================================ */
+function makeMatch(opts){
+  return {
+    id: state.matchSeq++,
+    round: opts.round || 1,
+    stage: opts.stage || '',       // 'KO' | 'LIGA' | 'GROUP' | 'LB' | 'GF' | 'SWISS' | 'PLAYOFF'
+    label: opts.label || '',       // z.B. Gruppenname, Rundenname
+    teamA: opts.teamA !== undefined ? opts.teamA : undefined,
+    teamB: opts.teamB !== undefined ? opts.teamB : undefined,
+    scoreA:null, scoreB:null,
+    liveScoreA:0, liveScoreB:0,    // laufender Live-Score während des Spiels (vor dem Endstand)
+    winner:null,
+    isBye:false,
+    status:'scheduled',   // 'scheduled' | 'live' | 'finished' – echter Live-Status, kein Uhrzeit-Raten
+    startedAt:null,       // echter Zeitstempel (ms) für den Countdown-Timer
+    nextMatchId:null, nextSlot:null,
+    loserNextMatchId:null, loserNextSlot:null, // für "Spiel um Platz 3": Verlierer wandert hierhin statt der Sieger
+    isPlacement:false,      // markiert JEDES Platzierungsspiel (3./5./7. Platz) – zählt nicht als "Finale"
+    time:null,            // aktuell beste Zeitschätzung (verschiebt sich bei Verzug)
+    plannedTime:null,     // ursprünglich geplante Zeit, bleibt unverändert (zum Verzug-Vergleich)
+    court:null
+  };
+}
+
+// Verteilt eine Liste von Spielen (eine "Runde") auf Courts + Uhrzeiten,
+// beginnend beim aktuellen state.nextTimeMin Zeiger. Erhöht den Zeiger danach.
+function scheduleBatch(matchList){
+  const real = matchList.filter(m => !(m.teamA===null || m.teamB===null)); // Freilose brauchen keinen Slot
+  const byes = matchList.filter(m => (m.teamA===null || m.teamB===null));
+  byes.forEach(m=>{ m.time=null; m.plannedTime=null; m.court=null; });
+
+  const courts = state.courts;
+  const blockLen = state.duration + state.pause;
+  real.forEach((m,i)=>{
+    const slot = Math.floor(i / courts);
+    const court = (i % courts) + 1;
+    m.time = state.nextTimeMin + slot*blockLen;
+    m.plannedTime = m.time;
+    m.court = court;
+  });
+  const slots = Math.ceil(real.length / courts) || (real.length>0?1:0);
+  if(real.length>0){
+    state.nextTimeMin += slots*blockLen;
+  }
+}
+
+// Startet ein Spiel wirklich JETZT (Klick auf "Spiel starten"). Vergleicht die tatsächliche
+// Startzeit mit der geplanten Zeit und verschiebt bei Verzug (oder Vorsprung) automatisch alle
+// noch nicht gestarteten Spiele auf DEMSELBEN Feld um denselben Betrag – der Spielplan passt
+// sich also live an das tatsächliche Geschehen an, statt stur am Ursprungsplan festzuhalten.
+function startMatch(matchId){
+  if(!isEditMode()) return; // nur Veranstalter:in darf Spiele starten
+  const m = state.matches.find(x=>x.id===matchId);
+  if(!m || m.status!=='scheduled' || m.time===null) return;
+  const nowMin = new Date().getHours()*60 + new Date().getMinutes();
+  const oldTime = m.time % 1440;
+  const delay = nowMin - oldTime;
+  m.status = 'live';
+  m.time = nowMin;
+  m.startedAt = Date.now();
+  m.liveScoreA = 0;
+  m.liveScoreB = 0;
+  if(delay !== 0 && m.court){
+    state.matches.forEach(other=>{
+      if(other.id!==m.id && other.court===m.court && other.status==='scheduled' && other.time!==null && (other.time % 1440) > oldTime){
+        other.time += delay;
+      }
+    });
+  }
+  renderTournament();
+  startLiveTimerTick();
+}
+
+// Live-Score während des Spiels hoch-/runterzählen (unabhängig vom späteren Endstand-Eintrag)
+function addLivePoint(matchId, side, points){
+  if(!isEditMode()) return; // nur Veranstalter:in darf mitzählen
+  const m = state.matches.find(x=>x.id===matchId);
+  if(!m || m.status!=='live') return;
+  if(side==='A') m.liveScoreA = Math.max(0, m.liveScoreA + points);
+  else m.liveScoreB = Math.max(0, m.liveScoreB + points);
+  renderTournament();
+}
+
+/* ---------- Countdown-Timer für laufende Spiele ---------- */
+let liveTimerInterval = null;
+function startLiveTimerTick(){
+  stopLiveTimerTick();
+  liveTimerInterval = setInterval(tickLiveTimers, 1000);
+}
+function stopLiveTimerTick(){
+  if(liveTimerInterval){ clearInterval(liveTimerInterval); liveTimerInterval = null; }
+}
+// Aktualisiert NUR die Timer-Textknoten im DOM (kein Voll-Rerender) – so bleibt z.B. der
+// Cursor in einem gerade bearbeiteten Score-Eingabefeld erhalten, während die Uhr weiterläuft.
+function tickLiveTimers(){
+  if(!state) return;
+  const els = document.querySelectorAll('.live-timer');
+  els.forEach(el=>{
+    const id = parseInt(el.dataset.matchId, 10);
+    const m = state.matches.find(x=>x.id===id);
+    if(!m || m.status!=='live' || !m.startedAt) return;
+    const remainingMs = state.duration*60*1000 - (Date.now() - m.startedAt);
+    el.textContent = formatCountdown(remainingMs);
+    el.classList.toggle('overtime', remainingMs < 0);
+  });
+}
+function formatCountdown(ms){
+  const over = ms < 0;
+  const totalSec = Math.floor(Math.abs(ms) / 1000);
+  const mm = Math.floor(totalSec / 60);
+  const ss = totalSec % 60;
+  return (over?'+':'') + mm + ':' + String(ss).padStart(2,'0');
+}
+function renderLiveTimerSpan(m, extraClass){
+  if(m.status!=='live' || !m.startedAt) return '';
+  const remainingMs = state.duration*60*1000 - (Date.now() - m.startedAt);
+  const cls = 'live-timer' + (remainingMs<0 ? ' overtime' : '') + (extraClass ? ' '+extraClass : '');
+  return `<span class="${cls}" data-match-id="${m.id}">${formatCountdown(remainingMs)}</span>`;
+}
+
+
+/* ============================================================
+   MODUS 1: K.O.-SYSTEM  (auch für Playoffs & Winner-Bracket im Doppel-K.O. genutzt)
+   ============================================================ */
+function buildKOBracket(teamsArr, opts){
+  opts = opts || {};
+  const doShuffle = opts.shuffle !== false;
+  const stage = opts.stage || 'KO';
+  const size = nextPow2(teamsArr.length);
+  const byeCount = size - teamsArr.length;
+
+  let ordered = doShuffle ? shuffle(teamsArr) : teamsArr.slice();
+
+  // Freilose fair verteilen: jedes Freilos bekommt ein eigenes Paar (kein Team spielt gegen ein "Doppel-Freilos")
+  const pairs = [];
+  let idx = 0;
+  for(let i=0;i<byeCount;i++){ pairs.push([ordered[idx++], null]); }
+  const rest = ordered.slice(idx);
+  for(let i=0;i<rest.length;i+=2){ pairs.push([rest[i], rest[i+1]]); }
+  const shuffledPairs = doShuffle ? shuffle(pairs) : pairs;
+  let current = shuffledPairs.flat();
+
+  const roundsArr = [];
+  let roundNum = 1;
+  while(current.length > 1){
+    const roundMatches = [];
+    for(let i=0;i<current.length;i+=2){
+      roundMatches.push(makeMatch({round:roundNum, stage, teamA:current[i], teamB:current[i+1]}));
+    }
+    roundsArr.push(roundMatches);
+    current = new Array(roundMatches.length).fill(undefined); // Platzhalter: Gewinner noch offen
+    roundNum++;
+  }
+
+  // Runden verlinken (Sieger rücken nach) – WICHTIG: das muss laufen, bevor unten irgendwelche
+  // Platzierungsspiele in die Runden-Arrays eingefügt werden, sonst würde diese generische
+  // Verknüpfung auch die Platzierungsspiele fälschlich mit verlinken.
+  for(let r=0;r<roundsArr.length-1;r++){
+    const round = roundsArr[r], next = roundsArr[r+1];
+    round.forEach((m,i)=>{
+      const target = next[Math.floor(i/2)];
+      m.nextMatchId = target.id;
+      m.nextSlot = (i%2===0) ? 'A' : 'B';
+    });
+  }
+
+  // Optional: Platzierungsspiele. "Spiel um Platz 3" braucht ein echtes Halbfinale (2 Spiele),
+  // "Spiel um Platz 5/7" zusätzlich ein echtes Viertelfinale (4 Spiele) eine Runde davor.
+  // Wichtig: 3./5./7. Platz werden zeitlich VOR dem Finale terminiert (eigene Zeitscheibe),
+  // damit das Finale garantiert das allerletzte Spiel des Turniers ist – nur die Anzeige
+  // gruppiert sie weiterhin zusammen in derselben "Finale"-Spalte/Runde.
+  const placementFinalMatches = []; // 3./5./7. Platz – eigene Zeitscheibe, läuft vor dem Finale
+  if(opts.thirdPlace && roundsArr.length >= 2){
+    const finalRound = roundsArr[roundsArr.length - 1]; // bleibt: enthält NUR das Finale
+    const semiRound = roundsArr[roundsArr.length - 2];
+
+    if(semiRound.length === 2){
+      const thirdPlaceMatch = makeMatch({round: roundsArr.length, stage, label:'Spiel um Platz 3'});
+      thirdPlaceMatch.isPlacement = true;
+      semiRound[0].loserNextMatchId = thirdPlaceMatch.id; semiRound[0].loserNextSlot = 'A';
+      semiRound[1].loserNextMatchId = thirdPlaceMatch.id; semiRound[1].loserNextSlot = 'B';
+      placementFinalMatches.push(thirdPlaceMatch);
+    }
+
+    if(roundsArr.length >= 3){
+      const qfRound = roundsArr[roundsArr.length - 3];
+      if(qfRound.length === 4){
+        // Zwei "Platzierungs-Halbfinals" aus den Viertelfinal-Verlierern (spiegelt die echte Bracket-Aufteilung)
+        const ps1 = makeMatch({round: roundsArr.length - 1, stage, label:'Halbfinale um Platz 5–8'});
+        const ps2 = makeMatch({round: roundsArr.length - 1, stage, label:'Halbfinale um Platz 5–8'});
+        ps1.isPlacement = true; ps2.isPlacement = true;
+        qfRound[0].loserNextMatchId = ps1.id; qfRound[0].loserNextSlot = 'A';
+        qfRound[1].loserNextMatchId = ps1.id; qfRound[1].loserNextSlot = 'B';
+        qfRound[2].loserNextMatchId = ps2.id; qfRound[2].loserNextSlot = 'A';
+        qfRound[3].loserNextMatchId = ps2.id; qfRound[3].loserNextSlot = 'B';
+        semiRound.push(ps1, ps2); // spielt weiterhin zeitgleich mit den echten Halbfinals
+
+        const fifthPlace = makeMatch({round: roundsArr.length, stage, label:'Spiel um Platz 5'});
+        const seventhPlace = makeMatch({round: roundsArr.length, stage, label:'Spiel um Platz 7'});
+        fifthPlace.isPlacement = true; seventhPlace.isPlacement = true;
+        // Sieger der Platzierungs-Halbfinals spielen um Platz 5, Verlierer um Platz 7
+        ps1.nextMatchId = fifthPlace.id; ps1.nextSlot = 'A';
+        ps2.nextMatchId = fifthPlace.id; ps2.nextSlot = 'B';
+        ps1.loserNextMatchId = seventhPlace.id; ps1.loserNextSlot = 'A';
+        ps2.loserNextMatchId = seventhPlace.id; ps2.loserNextSlot = 'B';
+        placementFinalMatches.push(fifthPlace, seventhPlace);
+      }
+    }
+  }
+
+  // in globale matches[]-Liste einhängen
+  roundsArr.forEach(r => r.forEach(m => state.matches.push(m)));
+  placementFinalMatches.forEach(m => state.matches.push(m));
+
+  // Zeitplan: erst alle Runden bis einschließlich Halbfinale ganz normal terminieren, DANN die
+  // Platzierungsspiele (3./5./7. Platz) als eigene Zeitscheibe, und ERST DANACH das Finale –
+  // so bekommt das Finale garantiert den spätesten Zeitslot von allen.
+  for(let r=0; r<roundsArr.length-1; r++){ scheduleBatch(roundsArr[r]); }
+  if(placementFinalMatches.length){ scheduleBatch(placementFinalMatches); }
+  scheduleBatch(roundsArr[roundsArr.length-1]); // Finale zuletzt
+
+  // Freilose aus Runde 1 sofort auflösen (kann kettenweise weiterlaufen)
+  roundsArr[0].forEach(m => tryResolveBye(m));
+  return roundsArr;
+}
+
+function tryResolveBye(m){
+  const aIsBye = m.teamA === null;
+  const bIsBye = m.teamB === null;
+  if(aIsBye && !bIsBye){ finishMatch(m, m.teamB, true); }
+  else if(bIsBye && !aIsBye){ finishMatch(m, m.teamA, true); }
+}
+
+function finishMatch(m, winnerTeam, isBye){
+  m.winner = winnerTeam;
+  m.isBye = !!isBye;
+  m.status = 'finished';
+  if(isBye){ m.scoreA=null; m.scoreB=null; }
+  propagateWinner(m);
+  onMatchFinished(m);
+}
+
+function propagateWinner(m){
+  if(m.nextMatchId){
+    const nm = state.matches.find(x => x.id === m.nextMatchId);
+    if(nm){
+      if(m.nextSlot === 'A') nm.teamA = m.winner; else nm.teamB = m.winner;
+      tryResolveBye(nm);
+    }
+  }
+  // Spiel um Platz 3: der VERLIERER (nicht der Sieger) wandert weiter
+  if(m.loserNextMatchId && m.winner && !m.isBye){
+    const loser = (m.winner === m.teamA) ? m.teamB : m.teamA;
+    const lm = state.matches.find(x => x.id === m.loserNextMatchId);
+    if(lm){
+      if(m.loserNextSlot === 'A') lm.teamA = loser; else lm.teamB = loser;
+      tryResolveBye(lm);
+    }
+  }
+}
+
+// Hook: wird nach jedem abgeschlossenen Spiel aufgerufen -> je nach Modus Zusatzlogik
+function onMatchFinished(m){
+  if(state.mode==='doppelko' && m.stage==='WB' && !m.isBye){
+    const loser = (m.winner === m.teamA) ? m.teamB : m.teamA;
+    state.doppel.lbPending.push(loser);
+  }
+  if(state.mode==='doppelko' && m.stage==='WB' && m.nextMatchId===null){
+    state.doppel.wbChampion = m.winner;
+  }
+  if(state.mode==='doppelko' && m.stage==='LB' && m.nextMatchId===null && m.isFinalLB){
+    state.doppel.lbChampion = m.winner;
+  }
+}
+
+/* ============================================================
+   MODUS 2: RUNDENTURNIER / LIGA  (Jeder-gegen-Jeden, "Circle Method")
+   ============================================================ */
+function roundRobinRounds(teamsArr){
+  let teams = teamsArr.slice();
+  const hasBye = teams.length % 2 !== 0;
+  if(hasBye) teams.push(null);
+  const n = teams.length;
+  const rounds = [];
+  for(let r=0;r<n-1;r++){
+    const pairs = [];
+    for(let i=0;i<n/2;i++){
+      const t1 = teams[i], t2 = teams[n-1-i];
+      if(t1 !== null && t2 !== null) pairs.push([t1,t2]);
+    }
+    rounds.push(pairs);
+    teams.splice(1,0, teams.pop());
+  }
+  return rounds;
+}
+
+function buildLiga(teamsArr){
+  const rounds = roundRobinRounds(shuffle(teamsArr));
+  rounds.forEach((pairs, i)=>{
+    const roundMatches = pairs.map(([a,b]) => makeMatch({round:i+1, stage:'LIGA', teamA:a, teamB:b}));
+    roundMatches.forEach(m => state.matches.push(m));
+    scheduleBatch(roundMatches);
+  });
+}
+
+/* ============================================================
+   MODUS 3: DOPPEL-K.O. (vereinfachte Variante)
+   ============================================================ */
+function buildDoppelKO(teamsArr){
+  buildKOBracket(teamsArr, {stage:'WB', shuffle:true});
+  // Falls es nur ein Winner-Bracket-Spiel gibt (2 Teams), Champion sofort merken, wenn schon entschieden (Freilos-Kette)
+  const wbMatches = state.matches.filter(m=>m.stage==='WB');
+  const final = wbMatches.reduce((a,b)=> (b.round>a.round?b:a), wbMatches[0]);
+  if(final && final.winner) state.doppel.wbChampion = final.winner;
+}
+
+function generateNextLBRound(){
+  if(!isEditMode()) return; // nur Veranstalter:in darf die nächste Runde generieren
+  const pool = state.doppel.lbPending.slice();
+  state.doppel.lbPending = [];
+  if(pool.length < 1) return;
+  state.doppel.lbRoundNum++;
+  const shuffled = shuffle(pool);
+  const roundMatches = [];
+  for(let i=0;i<shuffled.length;i+=2){
+    if(i+1 < shuffled.length){
+      roundMatches.push(makeMatch({round:state.doppel.lbRoundNum, stage:'LB', teamA:shuffled[i], teamB:shuffled[i+1]}));
+    } else {
+      // ungerade Anzahl -> Freilos, Team rückt direkt in den nächsten LB-Pool vor
+      state.doppel.lbPending.push(shuffled[i]);
+    }
+  }
+  roundMatches.forEach(m => state.matches.push(m));
+  scheduleBatch(roundMatches);
+}
+
+function lbReadyTeamsCount(){
+  // Teams, die aktuell "im Pool" sind: wartende Verlierer + Gewinner der letzten LB-Runde, die noch nicht erneut gepaart wurden
+  const lastLBRound = Math.max(0, ...state.matches.filter(m=>m.stage==='LB').map(m=>m.round), 0);
+  const lastRoundMatches = state.matches.filter(m=>m.stage==='LB' && m.round===lastLBRound);
+  const lastRoundDone = lastRoundMatches.length===0 || lastRoundMatches.every(m=>m.winner);
+  if(!lastRoundDone) return -1; // aktuelle Runde läuft noch
+  const survivors = lastRoundMatches.filter(m=>m.winner).map(m=>m.winner);
+  return state.doppel.lbPending.length + survivors.length;
+}
+
+function canGenerateLBRound(){
+  const lastLBRound = Math.max(0, ...state.matches.filter(m=>m.stage==='LB').map(m=>m.round), 0);
+  const lastRoundMatches = state.matches.filter(m=>m.stage==='LB' && m.round===lastLBRound);
+  const lastRoundDone = lastRoundMatches.every(m=>m.winner);
+  if(!lastRoundDone) return false;
+  const survivors = lastRoundMatches.filter(m=>m.winner).map(m=>m.winner);
+  const poolSize = state.doppel.lbPending.length + survivors.length;
+  return poolSize >= 2 && !state.doppel.grandFinal;
+}
+// vor jeder Prüfung Survivors in lbPending übernehmen
+function collectLBSurvivors(){
+  const lastLBRound = Math.max(0, ...state.matches.filter(m=>m.stage==='LB').map(m=>m.round), 0);
+  if(lastLBRound===0) return;
+  const lastRoundMatches = state.matches.filter(m=>m.stage==='LB' && m.round===lastLBRound);
+  if(lastRoundMatches.length && lastRoundMatches.every(m=>m.winner)){
+    lastRoundMatches.forEach(m=>{
+      if(!state.doppel._collectedRounds) state.doppel._collectedRounds = new Set();
+      if(!state.doppel._collectedRounds.has(m.id)){
+        state.doppel.lbPending.push(m.winner);
+        state.doppel._collectedRounds.add(m.id);
+      }
+    });
+  }
+}
+function lbChampionReady(){
+  collectLBSurvivors();
+  const lastLBRound = Math.max(0, ...state.matches.filter(m=>m.stage==='LB').map(m=>m.round), 0);
+  if(lastLBRound===0) return null;
+  const lastRoundMatches = state.matches.filter(m=>m.stage==='LB' && m.round===lastLBRound);
+  const allDone = lastRoundMatches.every(m=>m.winner);
+  if(!allDone) return null;
+  if(state.doppel.lbPending.length === 1) return state.doppel.lbPending[0];
+  return null;
+}
+function generateGrandFinal(){
+  if(!isEditMode()) return; // nur Veranstalter:in darf das Finale generieren
+  const wb = state.doppel.wbChampion;
+  const lb = state.doppel.lbChampion;
+  if(!wb || !lb) return;
+  const m = makeMatch({round:1, stage:'GF', teamA:wb, teamB:lb});
+  state.matches.push(m);
+  scheduleBatch([m]);
+  state.doppel.grandFinal = m;
+}
+
+/* ============================================================
+   MODUS 4: GRUPPENPHASE + PLAYOFFS
+   ============================================================ */
+function buildGruppen(teamsArr, numGroups){
+  const shuffled = shuffle(teamsArr);
+  const groups = {};
+  const letters = 'ABCDEFGH';
+  for(let i=0;i<numGroups;i++) groups[letters[i]] = [];
+  shuffled.forEach((t,i)=> groups[letters[i%numGroups]].push(t));
+  state.groups = groups;
+
+  const groupLetters = Object.keys(groups);
+  const groupRounds = {}; // Buchstabe -> Liste der Runden (jede Runde = Liste von Paarungen)
+  groupLetters.forEach(letter=>{ groupRounds[letter] = roundRobinRounds(groups[letter]); });
+  const maxRounds = Math.max(...groupLetters.map(l => groupRounds[l].length));
+
+  // Pro Runde die Gruppen im Wechsel einplanen (A, B, A, B, ...), nicht Gruppe A komplett vor Gruppe B
+  for(let r=0; r<maxRounds; r++){
+    const perGroupPairs = groupLetters.map(letter => groupRounds[letter][r] || []);
+    const maxPairsThisRound = Math.max(...perGroupPairs.map(p => p.length));
+    const roundMatches = [];
+    for(let i=0; i<maxPairsThisRound; i++){
+      groupLetters.forEach((letter, gi)=>{
+        const pair = perGroupPairs[gi][i];
+        if(pair){
+          roundMatches.push(makeMatch({round:r+1, stage:'GROUP', label:'Gruppe '+letter, teamA:pair[0], teamB:pair[1]}));
+        }
+      });
+    }
+    roundMatches.forEach(m => state.matches.push(m));
+    scheduleBatch(roundMatches);
+  }
+
+  // Playoff-Zeiten schon jetzt reservieren (mit Platzhalter-Namen wie "1. Gruppe A"), damit
+  // jeder schon sehen kann, wann Halbfinale/Finale stattfinden – nur bei "glatter" Teilnehmerzahl
+  // (z.B. 2 oder 4 Gruppen), sonst würden Freilose die Platzhalter-Vorschau verfälschen.
+  const qualifierCount = groupLetters.length * 2;
+  if(nextPow2(qualifierCount) === qualifierCount){
+    const placeholderOrder = computePlayoffOrder(false);
+    buildKOBracket(placeholderOrder, {stage:'PLAYOFF', shuffle:false, thirdPlace: state.thirdPlace});
+    state.playoffPreviewBuilt = true;
+  }
+}
+
+function allGroupMatchesDone(){
+  return state.matches.filter(m=>m.stage==='GROUP').every(m=>m.winner);
+}
+
+// Baut die Kreuz-Paarungs-Reihenfolge für die Playoffs (1. Gruppe A vs 2. Gruppe B, usw.).
+// useReal=false liefert symbolische Platzhalter-"Teams" für die Vorschau vor Ende der Gruppenphase,
+// useReal=true die tatsächlich qualifizierten Teams anhand der aktuellen Gruppentabellen.
+function computePlayoffOrder(useReal){
+  const groupLetters = Object.keys(state.groups);
+  const order = [];
+  if(useReal){
+    const firsts = [], seconds = [];
+    groupLetters.forEach(letter=>{
+      const standings = computeStandings(state.groups[letter], state.matches.filter(m=>m.stage==='GROUP' && m.label==='Gruppe '+letter));
+      if(standings[0]) firsts.push(standings[0].team);
+      if(standings[1]) seconds.push(standings[1].team);
+    });
+    for(let i=0;i<firsts.length;i++){
+      order.push(firsts[i]);
+      order.push(seconds[(i+1) % seconds.length]);
+    }
+  } else {
+    for(let i=0;i<groupLetters.length;i++){
+      const secondLetter = groupLetters[(i+1) % groupLetters.length];
+      order.push({ id:'ph-1st-'+groupLetters[i], name:'1. Gruppe '+groupLetters[i], isPlaceholder:true });
+      order.push({ id:'ph-2nd-'+secondLetter, name:'2. Gruppe '+secondLetter, isPlaceholder:true });
+    }
+  }
+  return order;
+}
+
+function generatePlayoffs(){
+  if(!isEditMode()) return; // nur Veranstalter:in darf die Playoffs generieren
+  const realOrder = computePlayoffOrder(true);
+  if(state.playoffPreviewBuilt){
+    // Platzhalter-Bracket existiert schon (samt reservierter Zeiten/Felder) – nur die echten
+    // Teams an derselben Position eintragen, statt alles neu zu terminieren.
+    const round1 = state.matches
+      .filter(m => m.stage==='PLAYOFF' && m.round===1)
+      .sort((a,b) => a.id - b.id);
+    round1.forEach((m, idx)=>{
+      m.teamA = realOrder[idx*2];
+      m.teamB = realOrder[idx*2+1];
+    });
+  } else {
+    buildKOBracket(realOrder, {stage:'PLAYOFF', shuffle:false, thirdPlace: state.thirdPlace});
+  }
+  state.playoffsGenerated = true;
+}
+
+/* ============================================================
+   MODUS 5: SCHWEIZER SYSTEM
+   ============================================================ */
+function buildSwissRound1(teamsArr){
+  state.swiss.currentRound = 1;
+  const shuffled = shuffle(teamsArr);
+  const roundMatches = [];
+  for(let i=0;i<shuffled.length;i+=2){
+    if(i+1 < shuffled.length){
+      roundMatches.push(makeMatch({round:1, stage:'SWISS', teamA:shuffled[i], teamB:shuffled[i+1]}));
+    } else {
+      const m = makeMatch({round:1, stage:'SWISS', teamA:shuffled[i], teamB:null});
+      roundMatches.push(m);
+    }
+  }
+  roundMatches.forEach(m => state.matches.push(m));
+  scheduleBatch(roundMatches);
+  roundMatches.forEach(m => tryResolveBye(m));
+}
+
+function currentSwissRoundDone(){
+  const r = state.swiss.currentRound;
+  return state.matches.filter(m=>m.stage==='SWISS' && m.round===r).every(m=>m.winner);
+}
+
+function generateNextSwissRound(){
+  if(!isEditMode()) return; // nur Veranstalter:in darf die nächste Runde generieren
+  const played = new Set(); // "id1-id2" Paare, die schon gespielt haben
+  state.matches.filter(m=>m.stage==='SWISS').forEach(m=>{
+    if(m.teamA && m.teamB){
+      played.add(m.teamA.id+'-'+m.teamB.id);
+      played.add(m.teamB.id+'-'+m.teamA.id);
+    }
+  });
+  const standings = computeStandings(state.teams, state.matches.filter(m=>m.stage==='SWISS'));
+  const pool = standings.map(s=>s.team);
+  const roundMatches = [];
+  const used = new Set();
+  const roundNum = state.swiss.currentRound + 1;
+
+  for(let i=0;i<pool.length;i++){
+    const t1 = pool[i];
+    if(used.has(t1.id)) continue;
+    let opponentIdx = -1;
+    for(let j=i+1;j<pool.length;j++){
+      const t2 = pool[j];
+      if(used.has(t2.id)) continue;
+      if(!played.has(t1.id+'-'+t2.id)){ opponentIdx = j; break; }
+    }
+    if(opponentIdx===-1){
+      for(let j=i+1;j<pool.length;j++){ if(!used.has(pool[j].id)){ opponentIdx=j; break; } }
+    }
+    if(opponentIdx!==-1){
+      const t2 = pool[opponentIdx];
+      used.add(t1.id); used.add(t2.id);
+      roundMatches.push(makeMatch({round:roundNum, stage:'SWISS', teamA:t1, teamB:t2}));
+    } else {
+      used.add(t1.id);
+      const m = makeMatch({round:roundNum, stage:'SWISS', teamA:t1, teamB:null});
+      roundMatches.push(m);
+    }
+  }
+  state.swiss.currentRound = roundNum;
+  roundMatches.forEach(m => state.matches.push(m));
+  scheduleBatch(roundMatches);
+  roundMatches.forEach(m => tryResolveBye(m));
+}
+
+/* ============================================================
+   TABELLE / STANDINGS
+   ============================================================ */
+function computeStandings(teamsArr, matchList){
+  const stats = {};
+  teamsArr.forEach(t=>{ stats[t.id] = { team:t, w:0, l:0, pf:0, pa:0 }; });
+  matchList.forEach(m=>{
+    if(!m.winner || m.isBye) return;
+    if(!m.teamA || !m.teamB) return;
+    if(m.scoreA===null || m.scoreB===null) return;
+    const a = stats[m.teamA.id], b = stats[m.teamB.id];
+    if(!a || !b) return;
+    a.pf += m.scoreA; a.pa += m.scoreB;
+    b.pf += m.scoreB; b.pa += m.scoreA;
+    if(m.winner.id === m.teamA.id){ a.w++; b.l++; } else { b.w++; a.l++; }
+  });
+  return Object.values(stats).sort((x,y)=>{
+    if(y.w !== x.w) return y.w - x.w;
+    const diffX = x.pf-x.pa, diffY = y.pf-y.pa;
+    if(diffY !== diffX) return diffY - diffX;
+    return y.pf - x.pf;
+  });
+}
+
+/* ============================================================
+   START / RESET
+   ============================================================ */
+function startTournament(){
+  if(!isAdminSession) return; // nur Veranstalter:in darf ein Turnier erstellen
+  const nameEls = document.querySelectorAll('.row-name');
+  const rosterEls = document.querySelectorAll('.row-roster');
+  const contactEls = document.querySelectorAll('.row-contact');
+  const teams = [];
+  nameEls.forEach((el,i)=>{
+    const name = el.value.trim();
+    if(name){
+      teams.push({ id:'t'+(i+1)+'_'+Date.now(), name, roster: rosterEls[i].value.trim(), contact: contactEls[i] ? contactEls[i].value.trim() : '' });
+    }
+  });
+
+  const errBox = document.getElementById('setupError');
+  errBox.textContent = '';
+  const minTeams = selectedMode==='gruppen' ? 4 : 2;
+  if(teams.length < minTeams){
+    errBox.textContent = `Bitte mindestens ${minTeams} Teams mit Namen eintragen.`;
+    return;
+  }
+  if(selectedMode==='gruppen'){
+    const numGroups = parseInt(document.getElementById('numGroupsInput').value,10) || 2;
+    if(numGroups < 2 || numGroups > Math.floor(teams.length/2)){
+      errBox.textContent = 'Anzahl Gruppen passt nicht zur Teamzahl (mind. 2 Teams pro Gruppe).';
+      return;
+    }
+  }
+
+  state = freshState();
+  state.name = document.getElementById('tName').value || 'Streetball Cup';
+  state.startMin = parseTimeToMin(document.getElementById('tStart').value || '10:00');
+  state.duration = parseInt(document.getElementById('tDuration').value,10) || 12;
+  state.pause = parseInt(document.getElementById('tPause').value,10) || 0;
+  state.courts = parseInt(document.getElementById('tCourts').value,10) || 1;
+  state.nextTimeMin = state.startMin;
+  state.mode = selectedMode;
+  state.teams = teams;
+  const thirdPlaceEl = document.getElementById('thirdPlaceInput');
+  state.thirdPlace = !!(thirdPlaceEl && thirdPlaceEl.checked);
+
+  if(state.mode==='ko'){
+    buildKOBracket(teams, {stage:'KO', shuffle:true, thirdPlace: state.thirdPlace});
+  } else if(state.mode==='liga'){
+    buildLiga(teams);
+  } else if(state.mode==='doppelko'){
+    buildDoppelKO(teams);
+  } else if(state.mode==='gruppen'){
+    state.numGroups = parseInt(document.getElementById('numGroupsInput').value,10) || 2;
+    buildGruppen(teams, state.numGroups);
+  } else if(state.mode==='schweiz'){
+    state.swiss.totalRounds = parseInt(document.getElementById('swissRoundsInput').value,10) || 3;
+    buildSwissRound1(teams);
+  }
+
+  activeTab = 'spielplan';
+  teamFilter = 'all';
+  myVoteChoices = {};
+  pendingRegistrations = []; // nicht freigegebene Anmeldungen verfallen mit Turnierstart
+  routeInitialView();
+}
+
+function resetTournament(){
+  if(!isAdminSession) return; // nur Veranstalter:in darf zurücksetzen
+  stopLiveTimerTick();
+  state = null;
+  activeTab = 'spielplan';
+  teamFilter = 'all';
+  myVoteChoices = {};
+  pendingRegistrations = [];
+  viewMode = 'overview';
+  routeInitialView();
+  maybeSyncPush();
+}
+
+/* ============================================================
+   ERGEBNIS EINTRAGEN
+   ============================================================ */
+function saveResult(matchId){
+  if(!isEditMode()) return; // nur Veranstalter:in darf Ergebnisse eintragen
+  const m = state.matches.find(x=>x.id===matchId);
+  if(!m) return;
+  const aEl = document.getElementById('scoreA-'+matchId);
+  const bEl = document.getElementById('scoreB-'+matchId);
+  const a = parseInt(aEl.value,10);
+  const b = parseInt(bEl.value,10);
+  if(isNaN(a) || isNaN(b)){ alert('Bitte beide Ergebnisse eintragen.'); return; }
+  if(a===b){ alert('Unentschieden ist im K.o./Turnierbetrieb nicht vorgesehen – bitte Sieger eintragen (z.B. nach Overtime).'); return; }
+  m.scoreA = a; m.scoreB = b;
+  finishMatch(m, a>b ? m.teamA : m.teamB, false);
+  renderTournament();
+}
+function editResult(matchId){
+  if(!isEditMode()) return; // nur Veranstalter:in darf Ergebnisse korrigieren
+  const m = state.matches.find(x=>x.id===matchId);
+  if(!m) return;
+  m.scoreA=null; m.scoreB=null; m.winner=null;
+  m.status = 'live';
+  renderTournament();
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+let activeTab = 'spielplan';   // 'spielplan' | 'baum'
+let teamFilter = 'all';        // 'all' oder eine Team-ID
+let viewMode = 'overview';     // 'edit' | 'overview' – startet immer schreibgeschützt
+// Merkt sich pro Kategorie, wofür DIESER Besuch (dieser offene Browser-Tab) schon öffentlich
+// abgestimmt hat – bewusst nur im Arbeitsspeicher, kein Server/keine Cookies. Ist also nur ein
+// Schutz gegen Mehrfach-Klicks in derselben Sitzung, kein echter Mehrgeräte-Schutz.
+// TODO (später): auf Supabase umstellen, dann zählt "einmal pro Besuch" wirklich geräteübergreifend.
+let myVoteChoices = {};
+
+function modeSupportsTree(){
+  return !!state && (state.mode==='ko' || state.mode==='doppelko' || state.mode==='gruppen');
+}
+// Trophäen-Abstimmung wird freigeschaltet, sobald die Gruppenphase komplett durchgespielt ist
+function modeSupportsAwards(){
+  return !!state && state.mode==='gruppen' && allGroupMatchesDone();
+}
+// Eigene "Tabelle"-Ansicht gibt's bei allen Modi mit einer echten Rangliste (Liga/Gruppen/Schweiz) –
+// bei K.O. und Doppel-K.O. gibt es keine laufende Tabelle, nur den Turnierbaum.
+function modeSupportsTable(){
+  return !!state && (state.mode==='liga' || state.mode==='gruppen' || state.mode==='schweiz');
+}
+function isEditMode(){ return viewMode === 'edit'; }
+
+function setTeamFilter(val){ teamFilter = val; renderTournament(); }
+function switchTab(tab){ activeTab = tab; renderTournament(); }
+
+function setViewMode(mode){
+  viewMode = mode;
+  renderTournament();
+}
+
+// Wechsel zwischen Editieren/Übersicht INNERHALB der Turnieransicht – bewusst NUR noch eine
+// Bequemlichkeitsfunktion für bereits eingeloggte Veranstalter:innen (z.B. um kurz zu sehen,
+// was Gäste sehen, und direkt wieder zurückzuspringen). Die eigentliche Anmeldung passiert
+// ausschließlich über den Header-Login oben rechts (headerAdminLogin()) – hier gibt es
+// bewusst KEINE Passwortabfrage und KEINE automatische Freischaltung mehr, sonst könnte
+// jede:r über diesen Button an der eigentlichen Veranstalter-Anmeldung vorbei Zugriff bekommen.
+function requestEditMode(){
+  if(!isAdminSession) return; // Sicherheitsnetz – der Button ist für Gäste ohnehin ausgeblendet
+  setViewMode('edit');
+}
+
+function renderModeSwitch(){
+  if(!isAdminSession){
+    return `<div class="mode-switch-wrap"><span class="overview-banner">🔒 Nur-Lesen-Modus – Veranstalter-Login oben rechts</span></div>`;
+  }
+  return `<div class="mode-switch-wrap">
+    <div class="mode-switch">
+      <button class="mode-switch-btn edit ${viewMode==='edit'?'active':''}" onclick="requestEditMode()">✏️ Editieren</button>
+      <button class="mode-switch-btn overview ${viewMode==='overview'?'active':''}" onclick="setViewMode('overview')">📺 Übersicht</button>
+    </div>
+    ${viewMode==='overview' ? `<span class="overview-banner">Vorschau als Gast – jederzeit zurück zum Editieren möglich</span>` : ''}
+  </div>`;
+}
+
+/* ---------- "Läuft jetzt" / "Als nächstes" – basiert auf ECHTEM Status, nicht nur Uhrzeit ---------- */
+function getLiveStatus(){
+  const current = state.matches.filter(m => m.status==='live');
+  const upcoming = state.matches
+    .filter(m => m.status==='scheduled' && m.time!==null && !m.isBye && m.teamA && m.teamB && m.teamA!==null && m.teamB!==null
+      && !m.teamA.isPlaceholder && !m.teamB.isPlaceholder)
+    .sort((a,b)=>a.time-b.time);
+  return { current, next: upcoming[0] || null };
+}
+function delayTag(m){
+  if(m.plannedTime===null || m.time===null) return '';
+  const delta = m.time - m.plannedTime;
+  if(delta===0) return '';
+  return `<span class="delay-tag ${delta>0?'late':'early'}">${delta>0?'⏱ +':'⏱ '}${delta} Min</span>`;
+}
+function liveMatchLine(m){
+  return `<div class="live-match">
+    <span class="live-time">${formatMin(m.time)} · Feld ${m.court} ${delayTag(m)}</span>
+    <span class="live-teams">${teamLabel(m.teamA)} <span class="vs">vs</span> ${teamLabel(m.teamB)}</span>
+    ${m.label ? `<span class="live-label">${m.label}</span>` : ''}
+  </div>`;
+}
+
+// Großes, oben angeheftetes Live-Scoreboard für ein einzelnes laufendes Spiel
+function renderBigLiveCard(m){
+  const timer = renderLiveTimerSpan(m, 'live-timer-big');
+  return `<div class="live-big-card">
+    <div class="live-big-top">
+      <span class="live-pulse-dot"></span>
+      <span class="live-big-label">LIVE${m.court?' · Feld '+m.court:''}${m.label?' · '+m.label:''}</span>
+      ${timer}
+    </div>
+    <div class="live-big-score">
+      <span class="live-big-team">${teamLabel(m.teamA)}</span>
+      <span class="live-big-num">${m.liveScoreA}</span>
+      <span class="live-big-sep">:</span>
+      <span class="live-big-num">${m.liveScoreB}</span>
+      <span class="live-big-team">${teamLabel(m.teamB)}</span>
+    </div>
+  </div>`;
+}
+
+// Immer ganz oben angeheftete Leiste: läuft gerade etwas, wird es hier groß mit Live-Score +
+// Timer angezeigt; unabhängig davon steht darunter kompakt, was als nächstes ansteht.
+function renderLiveHero(){
+  const { current, next } = getLiveStatus();
+  if(!current.length && !next) return '';
+  let html = `<div class="live-topbar">`;
+  if(current.length){
+    html += `<div class="live-big-grid">${current.map(renderBigLiveCard).join('')}</div>`;
+  }
+  if(next){
+    html += `<div class="live-next-strip"><span class="live-badge live-next">⏭ Als nächstes</span>${liveMatchLine(next)}</div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+/* ---------- Turniersieger-Erkennung + Sieger-Screen ---------- */
+function getChampion(){
+  if(!state) return null;
+  if(state.mode==='ko'){
+    const koMatches = state.matches.filter(m=>m.stage==='KO' && !m.isPlacement);
+    const final = koMatches.reduce((a,b)=> (!a || b.round>a.round) ? b : a, null);
+    return (final && final.winner) ? final.winner : null;
+  }
+  if(state.mode==='doppelko'){
+    return (state.doppel.grandFinal && state.doppel.grandFinal.winner) ? state.doppel.grandFinal.winner : null;
+  }
+  if(state.mode==='liga'){
+    const all = state.matches.filter(m=>m.stage==='LIGA');
+    if(all.length && all.every(m=>m.winner)){
+      const standings = computeStandings(state.teams, all);
+      return standings[0] ? standings[0].team : null;
+    }
+    return null;
+  }
+  if(state.mode==='gruppen'){
+    if(!state.playoffsGenerated) return null;
+    const playoffMatches = state.matches.filter(m=>m.stage==='PLAYOFF' && !m.isPlacement);
+    const final = playoffMatches.reduce((a,b)=> (!a || b.round>a.round) ? b : a, null);
+    return (final && final.winner) ? final.winner : null;
+  }
+  if(state.mode==='schweiz'){
+    if(state.swiss.currentRound < state.swiss.totalRounds) return null;
+    const lastRoundMatches = state.matches.filter(m=>m.stage==='SWISS' && m.round===state.swiss.currentRound);
+    if(!lastRoundMatches.length || !lastRoundMatches.every(m=>m.winner)) return null;
+    const standings = computeStandings(state.teams, state.matches.filter(m=>m.stage==='SWISS'));
+    return standings[0] ? standings[0].team : null;
+  }
+  return null;
+}
+
+function renderChampionBanner(champion){
+  return `<div class="champion-banner">
+    <div class="champion-trophy">🏆</div>
+    <div>
+      <div class="champion-label">Turniersieger</div>
+      <div class="champion-name">${teamLabel(champion)}</div>
+    </div>
+  </div>`;
+}
+
+// Wirft für ~4 Sekunden buntes Konfetti über die Seite (reines CSS/JS, kein Canvas nötig).
+function spawnConfetti(teamColor){
+  const colors = [teamColor || '#1466e6', '#1466e6', '#ffd23f', '#ffffff', '#33c46b'];
+  const container = document.createElement('div');
+  container.className = 'confetti-layer';
+  for(let i=0;i<60;i++){
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = (Math.random()*100) + 'vw';
+    piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+    piece.style.animationDuration = (2.5 + Math.random()*2) + 's';
+    piece.style.animationDelay = (Math.random()*0.6) + 's';
+    piece.style.transform = `rotate(${Math.random()*360}deg)`;
+    container.appendChild(piece);
+  }
+  document.body.appendChild(container);
+  setTimeout(()=> container.remove(), 5000);
+}
+
+function renderTournament(){
+  document.getElementById('tvTitle').textContent = state.name;
+  document.getElementById('tvModePill').textContent = MODES.find(x=>x.id===state.mode).title;
+  document.getElementById('tvTeamsPill').textContent = state.teams.length+' Teams';
+  const resetBtn = document.getElementById('resetBtn');
+  if(resetBtn) resetBtn.style.display = (viewMode==='overview') ? 'none' : 'inline-flex';
+
+  const champion = getChampion();
+  const box = document.getElementById('tvContent');
+  let html = '';
+  html += renderLiveHero();
+  if(champion) html += renderChampionBanner(champion);
+  html += renderModeSwitch();
+  html += renderOverviewSchedule();
+  html += renderTabBar();
+  html += `<div id="tabContent">`;
+  if(activeTab==='baum' && modeSupportsTree()){
+    html += renderTreeTabContent();
+  } else if(activeTab==='tabelle' && modeSupportsTable()){
+    html += renderTableTab();
+  } else if(activeTab==='awards' && modeSupportsAwards()){
+    html += renderAwardsTab();
+  } else if(activeTab==='teams' && isEditMode()){
+    html += renderTeamsTab();
+  } else {
+    if(state.mode==='ko') html += renderBracketView('KO');
+    else if(state.mode==='liga') html += renderLigaView();
+    else if(state.mode==='doppelko') html += renderDoppelKOView();
+    else if(state.mode==='gruppen') html += renderGruppenView();
+    else if(state.mode==='schweiz') html += renderSwissView();
+  }
+  html += `</div>`;
+  box.innerHTML = html;
+
+  if(champion && !state.championCelebrated){
+    state.championCelebrated = true;
+    requestAnimationFrame(()=> spawnConfetti(champion.color));
+  }
+
+  if(activeTab==='baum' && modeSupportsTree()){
+    // Verbindungslinien erst zeichnen, nachdem der Browser das Layout berechnet hat
+    requestAnimationFrame(drawAllTreeConnectors);
+  }
+
+  maybeSyncPush();
+}
+
+/* ---------- Spielplan-Übersicht: "Wer muss wann wo sein?" ---------- */
+function renderOverviewSchedule(){
+  const options = ['<option value="all">Alle Teams</option>']
+    .concat(state.teams.map(t=>`<option value="${t.id}" ${teamFilter===t.id?'selected':''}>${teamName(t)}</option>`));
+
+  let matches = state.matches.filter(m => m.time!==null && !m.isBye);
+  if(teamFilter !== 'all'){
+    matches = matches.filter(m => (m.teamA && m.teamA.id===teamFilter) || (m.teamB && m.teamB.id===teamFilter));
+  }
+  matches = matches.slice().sort((a,b) => (a.time-b.time) || (a.court-b.court));
+
+  const rows = matches.map(m=>{
+    const aReady = m.teamA && m.teamA !== null;
+    const bReady = m.teamB && m.teamB !== null;
+    const aName = aReady ? teamLabel(m.teamA) : 'noch offen';
+    const bName = bReady ? teamLabel(m.teamB) : 'noch offen';
+    let status;
+    const isPlaceholder = (m.teamA && m.teamA.isPlaceholder) || (m.teamB && m.teamB.isPlaceholder);
+    if(isPlaceholder) status = '🔒 Platzhalter';
+    else if(m.status==='live') status = '🔴 Live';
+    else if(m.winner) status = `✅ ${m.scoreA}:${m.scoreB}`;
+    else if(aReady && bReady) status = '⏳ geplant';
+    else status = '❔ wartet auf Vorrunde';
+    return `<tr>
+      <td>${formatMin(m.time)}</td>
+      <td>Feld ${m.court}</td>
+      <td>${m.label ? m.label+' · ' : ''}${aName} <span style="color:var(--text-dim)">vs</span> ${bName}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+      <h2 style="margin:0;">🕐 Wer spielt wann &amp; wo?</h2>
+      <select id="teamFilterSelect" onchange="setTeamFilter(this.value)">${options.join('')}</select>
+    </div>
+    ${matches.length
+      ? `<table class="standings schedule-table">
+          <thead><tr><th>Zeit</th><th>Feld</th><th>Begegnung</th><th>Status</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`
+      : `<p class="center-note">Für diese Auswahl sind noch keine terminierten Spiele vorhanden.</p>`}
+  </div>`;
+}
+
+function renderTabBar(){
+  return `<div class="tab-bar">
+    <button class="tab-btn ${activeTab==='spielplan'?'active':''}" onclick="switchTab('spielplan')">📋 Spielplan</button>
+    ${modeSupportsTable() ? `<button class="tab-btn ${activeTab==='tabelle'?'active':''}" onclick="switchTab('tabelle')">📊 Tabelle</button>` : ''}
+    ${modeSupportsTree() ? `<button class="tab-btn ${activeTab==='baum'?'active':''}" onclick="switchTab('baum')">🌳 Turnierbaum</button>` : ''}
+    ${modeSupportsAwards() ? `<button class="tab-btn ${activeTab==='awards'?'active':''}" onclick="switchTab('awards')">🏆 Awards</button>` : ''}
+    ${isEditMode() ? `<button class="tab-btn ${activeTab==='teams'?'active':''}" onclick="switchTab('teams')">👥 Teams</button>` : ''}
+  </div>`;
+}
+
+function teamName(t){ return t ? escapeHtml(t.name) : '—'; }
+function teamLabel(t){
+  return t ? escapeHtml(t.name) : '—';
+}
+
+function renderLiveScoreboard(m){
+  return `<div class="live-scoreboard">
+    <div class="live-score-team">
+      <div class="live-score-name">${teamLabel(m.teamA)}</div>
+      <div class="live-score-num">${m.liveScoreA}</div>
+      <div class="live-score-btns">
+        <button onclick="addLivePoint(${m.id},'A',-1)">−1</button>
+        <button onclick="addLivePoint(${m.id},'A',1)">+1</button>
+        <button onclick="addLivePoint(${m.id},'A',2)">+2</button>
+      </div>
+    </div>
+    <div class="live-score-sep">:</div>
+    <div class="live-score-team">
+      <div class="live-score-name">${teamLabel(m.teamB)}</div>
+      <div class="live-score-num">${m.liveScoreB}</div>
+      <div class="live-score-btns">
+        <button onclick="addLivePoint(${m.id},'B',-1)">−1</button>
+        <button onclick="addLivePoint(${m.id},'B',1)">+1</button>
+        <button onclick="addLivePoint(${m.id},'B',2)">+2</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderMatchCard(m){
+  const aName = m.teamA===null ? 'Freilos' : (m.teamA ? teamLabel(m.teamA) : 'TBD');
+  const bName = m.teamB===null ? 'Freilos' : (m.teamB ? teamLabel(m.teamB) : 'TBD');
+  const playable = m.teamA && m.teamB && m.teamA!==null && m.teamB!==null;
+  const done = !!m.winner && !m.isBye;
+
+  const timeStr = m.time!==null ? formatMin(m.time) : '–';
+  const courtStr = m.court!==null ? 'Feld '+m.court : '';
+  const delayHtml = delayTag(m);
+
+  // Playoff-Vorschau: Zeiten/Struktur stehen fest, aber die echten Teams noch nicht –
+  // rein informativer Platzhalter, unabhängig vom Editier-/Übersichtsmodus.
+  if((m.teamA && m.teamA.isPlaceholder) || (m.teamB && m.teamB.isPlaceholder)){
+    return `<div class="match-card placeholder-match" data-match-id="${m.id}">
+      <div class="match-meta"><span>${m.label||''}</span><span>${timeStr}${courtStr?', '+courtStr:''} ${delayHtml}</span></div>
+      <div class="match-teams">
+        <div class="team-line"><span class="name placeholder-name">${escapeHtml(m.teamA.name)}</span></div>
+        <div class="team-line"><span class="name placeholder-name">${escapeHtml(m.teamB.name)}</span></div>
+      </div>
+      <div class="bye-tag">🔒 wird automatisch befüllt, sobald die Gruppenphase fertig ist</div>
+    </div>`;
+  }
+
+  if(m.isBye){
+    return `<div class="match-card" data-match-id="${m.id}">
+      <div class="match-meta"><span>${m.label||''}</span><span></span></div>
+      <div class="match-teams">
+        <div class="team-line winner"><span class="name">${teamLabel(m.winner)}</span><span class="bye-tag">Freilos</span></div>
+      </div>
+    </div>`;
+  }
+  if(!playable){
+    return `<div class="match-card" data-match-id="${m.id}">
+      <div class="match-meta"><span>${m.label||''}</span><span>${timeStr}${courtStr?', '+courtStr:''} ${delayHtml}</span></div>
+      <div class="match-teams">
+        <div class="team-line"><span class="name" style="color:var(--text-dim)">${aName}</span></div>
+        <div class="team-line"><span class="name" style="color:var(--text-dim)">${bName}</span></div>
+      </div>
+      <div class="bye-tag">wartet auf vorherige Ergebnisse</div>
+    </div>`;
+  }
+
+  const aWin = done && m.winner.id === m.teamA.id;
+  const bWin = done && m.winner.id === m.teamB.id;
+  const timerSpan = renderLiveTimerSpan(m);
+  const liveBadge = m.status==='live' ? `<span class="live-chip">🔴 LIVE ${timerSpan}</span>` : '';
+
+  // Übersichtsmodus: reine Anzeige ohne Eingabefelder/Buttons (für Beamer/Aushang)
+  if(!isEditMode()){
+    const overScoreA = m.status==='live' ? m.liveScoreA : (m.scoreA ?? '–');
+    const overScoreB = m.status==='live' ? m.liveScoreB : (m.scoreB ?? '–');
+    return `<div class="match-card overview" data-match-id="${m.id}">
+      <div class="match-meta"><span>${m.label||''}${liveBadge}</span><span>${timeStr}${courtStr?', '+courtStr:''} ${delayHtml}</span></div>
+      <div class="match-teams">
+        <div class="team-line ${aWin?'winner':(done?'loser':'')}">
+          <span class="name">${teamLabel(m.teamA)}</span>
+          <span class="score-readonly">${overScoreA}</span>
+        </div>
+        <div class="team-line ${bWin?'winner':(done?'loser':'')}">
+          <span class="name">${teamLabel(m.teamB)}</span>
+          <span class="score-readonly">${overScoreB}</span>
+        </div>
+      </div>
+      ${m.status==='scheduled' ? `<div class="bye-tag">⏳ geplant für ${timeStr}</div>` : ''}
+    </div>`;
+  }
+
+  // Editier-Modus, Spiel noch nicht gestartet: nur "Spiel starten"-Button, noch keine Score-Eingabe
+  if(m.status==='scheduled'){
+    return `<div class="match-card" data-match-id="${m.id}">
+      <div class="match-meta"><span>${m.label||''}</span><span>${timeStr}${courtStr?', '+courtStr:''} ${delayHtml}</span></div>
+      <div class="match-teams">
+        <div class="team-line"><span class="name">${teamLabel(m.teamA)}</span></div>
+        <div class="team-line"><span class="name">${teamLabel(m.teamB)}</span></div>
+      </div>
+      <div class="match-actions">
+        <button onclick="startMatch(${m.id})" class="start-btn">▶ Spiel starten</button>
+      </div>
+    </div>`;
+  }
+
+  // Editier-Modus, Spiel läuft: Live-Scoreboard zum Mitzählen + separater Endstand darunter
+  const liveScoreboardHtml = (m.status==='live') ? renderLiveScoreboard(m) : '';
+  const prefillA = m.scoreA ?? (m.status==='live' ? m.liveScoreA : '');
+  const prefillB = m.scoreB ?? (m.status==='live' ? m.liveScoreB : '');
+
+  return `<div class="match-card" data-match-id="${m.id}">
+    <div class="match-meta"><span>${m.label||''}${liveBadge}</span><span>${timeStr}${courtStr?', '+courtStr:''} ${delayHtml}</span></div>
+    ${liveScoreboardHtml}
+    <div class="final-score-label">${done ? 'Endstand' : 'Endstand eintragen'}</div>
+    <div class="match-teams">
+      <div class="team-line ${aWin?'winner':(done?'loser':'')}">
+        <span class="name">${teamLabel(m.teamA)}</span>
+        <input type="number" class="score-box" id="scoreA-${m.id}" value="${prefillA}" ${done?'disabled':''} min="0">
+      </div>
+      <div class="team-line ${bWin?'winner':(done?'loser':'')}">
+        <span class="name">${teamLabel(m.teamB)}</span>
+        <input type="number" class="score-box" id="scoreB-${m.id}" value="${prefillB}" ${done?'disabled':''} min="0">
+      </div>
+    </div>
+    <div class="match-actions">
+      ${done
+        ? `<button onclick="editResult(${m.id})">✎ Korrigieren</button>`
+        : `<button onclick="saveResult(${m.id})" style="background:var(--aeg-red);color:#161616;border:none;">✓ Ergebnis speichern &amp; Spiel beenden</button>`
+      }
+    </div>
+  </div>`;
+}
+
+function renderBracketView(stageFilter){
+  const stageMatches = state.matches.filter(m=>m.stage===stageFilter);
+  const rounds = {};
+  stageMatches.forEach(m=>{ (rounds[m.round] = rounds[m.round]||[]).push(m); });
+  const roundNums = Object.keys(rounds).map(Number).sort((a,b)=>a-b);
+  const total = roundNums.length;
+  const roundName = (r,i)=>{
+    const left = total - i;
+    if(left===1) return 'Finale';
+    if(left===2) return 'Halbfinale';
+    if(left===3) return 'Viertelfinale';
+    return 'Runde '+r;
+  };
+  return roundNums.map((r,i)=>`
+    <div class="round-block">
+      <div class="round-title">${roundName(r,i)}</div>
+      <div class="matches-grid">${rounds[r].map(renderMatchCard).join('')}</div>
+    </div>
+  `).join('');
+}
+
+function renderStandingsTable(teamsArr, matchList, qualifyCount){
+  const standings = computeStandings(teamsArr, matchList);
+  return `<table class="standings">
+    <thead><tr><th>#</th><th>Team</th><th class="num">S</th><th class="num">N</th><th class="num">Körbe +/-</th></tr></thead>
+    <tbody>
+      ${standings.map((s,i)=>`
+        <tr class="${qualifyCount && i<qualifyCount ? 'qualify':''}">
+          <td>${i+1}</td><td>${teamLabel(s.team)}</td>
+          <td class="num">${s.w}</td><td class="num">${s.l}</td>
+          <td class="num">${s.pf-s.pa>0?'+':''}${s.pf-s.pa}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+// Eigene "Tabelle"-Ansicht: dieselben Ranglisten wie im Spielplan, aber als eigener Tab direkt
+// mit einem Klick erreichbar – ohne erst durch den Spielplan scrollen zu müssen.
+function renderTableTab(){
+  if(state.mode==='liga'){
+    return `<div class="card"><h2>Tabelle</h2>${renderStandingsTable(state.teams, state.matches.filter(m=>m.stage==='LIGA'))}</div>`;
+  }
+  if(state.mode==='schweiz'){
+    return `<div class="card"><h2>Tabelle</h2>${renderStandingsTable(state.teams, state.matches.filter(m=>m.stage==='SWISS'))}</div>`;
+  }
+  if(state.mode==='gruppen'){
+    let html = `<div class="group-wrap">`;
+    Object.keys(state.groups).forEach(letter=>{
+      const groupMatches = state.matches.filter(m=>m.stage==='GROUP' && m.label==='Gruppe '+letter);
+      html += `<div class="card"><h2>Gruppe ${letter}</h2>${renderStandingsTable(state.groups[letter], groupMatches, 2)}</div>`;
+    });
+    html += `</div>`;
+    return html;
+  }
+  return '';
+}
+
+function renderLigaView(){
+  let html = renderBracketViewGeneric('LIGA');
+  html += `<div class="card"><h2>Tabelle</h2>${renderStandingsTable(state.teams, state.matches)}</div>`;
+  return html;
+}
+function renderBracketViewGeneric(stage){
+  const stageMatches = state.matches.filter(m=>m.stage===stage);
+  const rounds = {};
+  stageMatches.forEach(m=>{ (rounds[m.round]=rounds[m.round]||[]).push(m); });
+  const roundNums = Object.keys(rounds).map(Number).sort((a,b)=>a-b);
+  return roundNums.map(r=>`
+    <div class="round-block">
+      <div class="round-title">Runde ${r}</div>
+      <div class="matches-grid">${rounds[r].map(renderMatchCard).join('')}</div>
+    </div>
+  `).join('');
+}
+
+function renderGruppenView(){
+  let html = '';
+  html += `<div class="info-box">Erst spielt jede Gruppe „jeder gegen jeden“. Wenn alle Gruppenspiele fertig sind, kannst du unten die Playoffs (K.o.-Runde mit den besten Teams je Gruppe) auslösen.</div>`;
+  html += `<div class="group-wrap">`;
+  Object.keys(state.groups).forEach(letter=>{
+    const groupMatches = state.matches.filter(m=>m.stage==='GROUP' && m.label==='Gruppe '+letter);
+    const rounds = {};
+    groupMatches.forEach(m=>{ (rounds[m.round]=rounds[m.round]||[]).push(m); });
+    const roundNums = Object.keys(rounds).map(Number).sort((a,b)=>a-b);
+    html += `<div class="card">
+      <h2>Gruppe ${letter}</h2>
+      ${renderStandingsTable(state.groups[letter], groupMatches, 2)}
+      ${roundNums.map(r=>`
+        <div class="round-block">
+          <div class="round-title">Runde ${r}</div>
+          <div class="matches-grid">${rounds[r].map(renderMatchCard).join('')}</div>
+        </div>`).join('')}
+    </div>`;
+  });
+  html += `</div>`;
+
+  if(!state.playoffsGenerated){
+    const ready = allGroupMatchesDone();
+    html += `<div class="card">
+      <h2>Playoffs</h2>
+      ${state.playoffPreviewBuilt
+        ? `<div class="info-box">Die Zeiten und Felder für die Playoffs stehen schon fest – wer wirklich spielt, wird automatisch eingetragen, sobald die Gruppenphase abgeschlossen ist.</div>${renderBracketView('PLAYOFF')}`
+        : ''}
+      ${ready
+        ? (isEditMode()
+            ? `<button class="primary-btn" onclick="generatePlayoffs(); renderTournament();">🏆 Playoffs generieren</button>`
+            : `<p class="center-note">Alle Gruppenspiele sind fertig – die Turnierleitung kann die Playoffs im Editier-Modus generieren.</p>`)
+        : `<p class="center-note">${state.playoffPreviewBuilt ? 'Die echten Teams' : 'Die Playoffs'} werden eingetragen, sobald alle Gruppenspiele ein Ergebnis haben.</p>`}
+    </div>`;
+  } else {
+    html += `<div class="card"><h2>Playoffs</h2>${renderBracketView('PLAYOFF')}</div>`;
+  }
+  if(modeSupportsAwards()){
+    html += `<div class="info-box">🏆 Die Gruppenphase ist beendet – im Tab „Awards" oben könnt ihr jetzt für die individuellen Trophäen abstimmen.</div>`;
+  }
+  return html;
+}
+
+// Baut die Liste aller wählbaren Spieler:innen aus den Kadern (roster-Feld, Komma-getrennt)
+function getAllPlayers(){
+  const players = [];
+  state.teams.forEach(t=>{
+    const names = (t.roster || '').split(',').map(s=>s.trim()).filter(Boolean);
+    names.forEach(name=>{ players.push({ key: t.id+'::'+name, name, teamName: t.name }); });
+  });
+  return players;
+}
+
+// Escaped einen Wert sicher für die Verwendung als einfach gequoteter JS-String in einem onclick-Attribut
+function jsStr(s){
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+function voteFor(catKey, candKey, delta){
+  if(!state.awards) state.awards = { votes:{} };
+  if(!state.awards.votes[catKey]) state.awards.votes[catKey] = {};
+  const current = state.awards.votes[catKey][candKey] || 0;
+  state.awards.votes[catKey][candKey] = Math.max(0, current + delta);
+  renderTournament();
+}
+
+// Öffentliche Stimme (Übersichtsmodus): nur +1, nur einmal pro Kategorie und Besuch.
+// myVoteChoices merkt sich das VOR dem eigentlichen voteFor()-Aufruf, damit das direkt
+// im selben Render mit berücksichtigt wird (kein doppeltes Klicken möglich).
+function castPublicVote(catKey, candKey){
+  if(myVoteChoices[catKey]) return; // schon abgestimmt – Sicherheitsnetz, Button ist eh ausgeblendet
+  myVoteChoices[catKey] = candKey;
+  voteFor(catKey, candKey, 1); // löst renderTournament() bereits selbst aus
+}
+
+function renderAwardsTab(){
+  const players = getAllPlayers();
+  let html = `<div class="info-box">🏆 Die Gruppenphase ist gelaufen – jetzt wird abgestimmt! ${isEditMode() ? 'Als Turnierleitung könnt ihr Stimmen frei anpassen (+1/−1).' : 'Ihr könnt pro Kategorie einmal abstimmen.'}</div>`;
+
+  AWARD_CATEGORIES.forEach(cat=>{
+    const candidates = cat.type==='team'
+      ? state.teams.map(t=>({ key:t.id, name:t.name, sub:'' }))
+      : players.map(p=>({ key:p.key, name:p.name, sub:p.teamName }));
+
+    if(candidates.length===0){
+      html += `<div class="card"><h2>${cat.title}</h2><p class="center-note">Keine Kandidat:innen vorhanden – dafür müssten Kader (Spielernamen) bei den Teams eingetragen sein.</p></div>`;
+      return;
+    }
+
+    const votes = state.awards.votes[cat.key] || {};
+    const sorted = candidates.slice().sort((a,b) => (votes[b.key]||0) - (votes[a.key]||0));
+    const maxVotes = Math.max(1, ...sorted.map(c => votes[c.key]||0));
+    const myChoice = myVoteChoices[cat.key]; // undefined = in dieser Kategorie noch nicht öffentlich abgestimmt
+
+    html += `<div class="card">
+      <h2>${cat.title}</h2>
+      ${(!isEditMode() && myChoice) ? `<p class="vote-done-note">✓ Danke, deine Stimme in dieser Kategorie ist gezählt.</p>` : ''}
+      <div class="award-list">
+        ${sorted.map((c,i)=>{
+          const v = votes[c.key] || 0;
+          const pct = Math.round((v/maxVotes)*100);
+          const leader = i===0 && v>0;
+          const isMyChoice = !isEditMode() && myChoice === c.key;
+
+          let actionHtml = '';
+          if(isEditMode()){
+            // Turnierleitung: volle Kontrolle, inkl. Korrektur nach unten
+            actionHtml = `<div class="award-vote-btns">
+              <button onclick="voteFor('${jsStr(cat.key)}','${jsStr(c.key)}',-1)">−1</button>
+              <button onclick="voteFor('${jsStr(cat.key)}','${jsStr(c.key)}',1)" class="vote-plus">+1</button>
+            </div>`;
+          } else if(!myChoice){
+            // Öffentlich: nur eine einzige Stimme möglich, kein Zurücknehmen
+            actionHtml = `<button class="vote-plus" onclick="castPublicVote('${jsStr(cat.key)}','${jsStr(c.key)}')">🗳️ Abstimmen</button>`;
+          } else if(isMyChoice){
+            actionHtml = `<span class="my-vote-badge">✓ Deine Stimme</span>`;
+          }
+
+          return `<div class="award-row ${leader?'leader':''} ${isMyChoice?'my-vote':''}">
+            <div class="award-bar" style="width:${pct}%"></div>
+            <div class="award-row-content">
+              <span class="award-name">${leader?'👑 ':''}${escapeHtml(c.name)}${c.sub ? ` <span class="award-sub">(${escapeHtml(c.sub)})</span>` : ''}</span>
+              <span class="award-votes">${v} ${v===1?'Stimme':'Stimmen'}</span>
+              ${actionHtml}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+
+  return html;
+}
+
+/* ---------- Teams-Tab: nachträgliche Anmeldungen freigeben + Teams manuell ergänzen ---------- */
+function renderTeamsTab(){
+  let html = `<div class="info-box">Hier könnt ihr Teamnamen/Kontakt/Kader jederzeit korrigieren, auch während das Turnier schon läuft – die Änderung wirkt sich überall aus (Spielplan, Turnierbaum, Awards). Neu eingegangene Anmeldungen könnt ihr hier freigeben oder ein Team manuell hinzufügen. Wichtig: neu hinzugefügte Teams landen im Roster (z.B. für die Awards-Abstimmung), aber NICHT automatisch im bereits erzeugten Spielplan/Turnierbaum – wer-gegen-wen-spielt lässt sich nach dem Start nicht mehr automatisch umbauen.</div>`;
+
+  if(pendingRegistrations.length){
+    html += `<div class="card">
+      <h2>🙋 Offene Anmeldungen <span class="pill">${pendingRegistrations.length} offen</span></h2>
+      ${pendingRegistrations.map(r => `
+        <div class="reg-row">
+          <div class="reg-info">
+            <div class="reg-name">${escapeHtml(r.name)}</div>
+            <div class="reg-roster">Teamhead: ${escapeHtml(r.teamHead)}</div>
+            ${r.roster ? `<div class="reg-roster">${escapeHtml(r.roster)}</div>` : ''}
+          </div>
+          <div class="reg-actions">
+            <button onclick="approveRegistration(${r.id})" class="approve-btn">✓ Zulassen</button>
+            <button onclick="rejectRegistration(${r.id})" class="reject-btn">✕ Ablehnen</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  html += `<div class="card">
+    <h2>Aktuelle Teams (${state.teams.length}) <span class="pill">bearbeitbar</span></h2>
+    <div class="team-edit-header">
+      <span>Team</span><span>Teamhead / Kontakt</span><span>Spieler</span>
+    </div>
+    ${state.teams.map(t => `
+      <div class="team-edit-row">
+        <input type="text" value="${escapeHtml(t.name)}" onchange="updateTeamEverywhere('${t.id}','name',this.value)">
+        <input type="text" value="${escapeHtml(t.contact || '')}" placeholder="Teamhead/Kontakt" onchange="updateTeamEverywhere('${t.id}','contact',this.value)">
+        <input type="text" value="${escapeHtml(t.roster || '')}" placeholder="Spieler" onchange="updateTeamEverywhere('${t.id}','roster',this.value)">
+      </div>
+    `).join('')}
+  </div>`;
+
+  html += `<div class="card">
+    <h2>+ Team nachträglich hinzufügen</h2>
+    <div class="team-row-wrap">
+      <div><input type="text" id="lateTeamName" placeholder="Teamname"></div>
+      <div><input type="text" id="lateTeamContact" placeholder="Teamhead / Kontakt"></div>
+      <div><input type="text" id="lateTeamRoster" placeholder="Spieler (optional)"></div>
+    </div>
+    <button onclick="addLateTeam()" class="primary-btn" style="margin-top:8px;">+ Zur Teamliste hinzufügen</button>
+  </div>`;
+
+  return html;
+}
+
+// Ändert ein Teamfeld (Name/Kontakt/Kader) und hält es überall konsistent: normalerweise
+// zeigen state.teams und die Team-Referenzen in state.matches (teamA/teamB/winner, ...)
+// auf dasselbe Objekt, aber nach einem Supabase-Sync-Roundtrip (JSON serialisiert/parst den
+// gesamten Zustand neu) sind das eigenständige Kopien mit gleicher id – deshalb wird hier
+// zur Sicherheit überall nach passender id gesucht und mit aktualisiert, nicht nur einmal.
+function updateTeamEverywhere(teamId, field, value){
+  if(!isEditMode()) return; // nur Veranstalter:in darf Teams bearbeiten
+  const t = state.teams.find(x => x.id===teamId);
+  if(!t) return;
+  t[field] = value;
+  const applyIfMatch = (obj) => { if(obj && obj.id===teamId) obj[field] = value; };
+  state.matches.forEach(m => { applyIfMatch(m.teamA); applyIfMatch(m.teamB); applyIfMatch(m.winner); });
+  if(state.groups){
+    Object.keys(state.groups).forEach(letter => state.groups[letter].forEach(applyIfMatch));
+  }
+  if(state.doppel){
+    applyIfMatch(state.doppel.wbChampion);
+    applyIfMatch(state.doppel.lbChampion);
+    state.doppel.lbPending.forEach(applyIfMatch);
+  }
+  renderTournament();
+  maybeSyncPush();
+}
+
+function addLateTeam(){
+  if(!isEditMode()) return; // nur Veranstalter:in darf Teams hinzufügen
+  const nameEl = document.getElementById('lateTeamName');
+  const contactEl = document.getElementById('lateTeamContact');
+  const rosterEl = document.getElementById('lateTeamRoster');
+  const name = nameEl.value.trim();
+  if(!name){ alert('Bitte einen Teamnamen eingeben.'); return; }
+  state.teams.push({
+    id: 't_late_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+    name, contact: contactEl.value.trim(), roster: rosterEl.value.trim()
+  });
+  nameEl.value = ''; contactEl.value = ''; rosterEl.value = '';
+  renderTournament();
+  maybeSyncPush();
+}
+
+function renderSwissView(){
+  let html = `<div class="info-box">Runde ${state.swiss.currentRound} von ${state.swiss.totalRounds}. Nach jeder Runde werden die Paarungen anhand der aktuellen Tabelle neu berechnet (keine Wiederholungs-Duelle, wenn vermeidbar).</div>`;
+  for(let r=1;r<=state.swiss.currentRound;r++){
+    const roundMatches = state.matches.filter(m=>m.stage==='SWISS' && m.round===r);
+    html += `<div class="round-block">
+      <div class="round-title">Runde ${r}</div>
+      <div class="matches-grid">${roundMatches.map(renderMatchCard).join('')}</div>
+    </div>`;
+  }
+  html += `<div class="card"><h2>Tabelle</h2>${renderStandingsTable(state.teams, state.matches.filter(m=>m.stage==='SWISS'))}</div>`;
+
+  if(state.swiss.currentRound < state.swiss.totalRounds){
+    const canNext = currentSwissRoundDone();
+    html += `<div class="card">
+      ${canNext
+        ? (isEditMode()
+            ? `<button class="primary-btn" onclick="generateNextSwissRound(); renderTournament();">▶ Runde ${state.swiss.currentRound+1} generieren</button>`
+            : `<p class="center-note">Runde ${state.swiss.currentRound+1} kann von der Turnierleitung im Editier-Modus generiert werden.</p>`)
+        : `<p class="center-note">Runde ${state.swiss.currentRound+1} kann generiert werden, sobald alle Spiele der aktuellen Runde ein Ergebnis haben.</p>`}
+    </div>`;
+  } else {
+    html += `<div class="info-box">Alle Runden gespielt – Turniersieger ist das Team ganz oben in der Tabelle. 🏆</div>`;
+  }
+  return html;
+}
+
+function renderDoppelKOView(){
+  let html = `<div class="info-box">Vereinfachter Doppel-K.O.: Im Winner-Bracket scheidet aus, wer verliert – landet aber automatisch im Pool für die Verlierer-Runde. Sobald genug Teams im Pool sind, kannst du unten die nächste Verlierer-Runde auslösen. Am Ende spielt der Sieger des Winner-Brackets gegen den Sieger der Verlierer-Runde das Finale.</div>`;
+  html += `<div class="card"><h2>Winner-Bracket</h2>${renderBracketView('WB')}</div>`;
+
+  const lbRounds = {};
+  state.matches.filter(m=>m.stage==='LB').forEach(m=>{ (lbRounds[m.round]=lbRounds[m.round]||[]).push(m); });
+  const lbRoundNums = Object.keys(lbRounds).map(Number).sort((a,b)=>a-b);
+  html += `<div class="card"><h2>Verlierer-Runde (Loser-Bracket)</h2>`;
+  if(lbRoundNums.length===0){
+    html += `<p class="center-note">Noch keine Verlierer-Runde gestartet – warte auf die ersten Ergebnisse im Winner-Bracket.</p>`;
+  }
+  lbRoundNums.forEach(r=>{
+    html += `<div class="round-block"><div class="round-title">Verlierer-Runde ${r}</div>
+      <div class="matches-grid">${lbRounds[r].map(renderMatchCard).join('')}</div></div>`;
+  });
+
+  const champ = lbChampionReady();
+  if(champ) state.doppel.lbChampion = champ;
+
+  if(!state.doppel.grandFinal){
+    if(state.doppel.wbChampion && state.doppel.lbChampion){
+      html += isEditMode()
+        ? `<button class="primary-btn" onclick="generateGrandFinal(); renderTournament();">🏆 Finale generieren (Winner- vs. Verlierer-Champion)</button>`
+        : `<p class="center-note">Beide Champions stehen fest – das Finale kann im Editier-Modus generiert werden.</p>`;
+    } else if(canGenerateLBRound()){
+      html += isEditMode()
+        ? `<button class="primary-btn" onclick="generateNextLBRound(); renderTournament();">▶ Nächste Verlierer-Runde generieren</button>`
+        : `<p class="center-note">Die nächste Verlierer-Runde kann im Editier-Modus generiert werden.</p>`;
+    } else {
+      html += `<p class="center-note">Warte auf weitere Ergebnisse, um die nächste Verlierer-Runde zu generieren.</p>`;
+    }
+  }
+  html += `</div>`;
+
+  if(state.doppel.grandFinal){
+    html += `<div class="card"><h2>Finale</h2>
+      <div class="matches-grid">${renderMatchCard(state.doppel.grandFinal)}</div>
+    </div>`;
+  }
+  return html;
+}
+
+/* ============================================================
+   TURNIERBAUM-ANSICHT (visueller Baum mit Verbindungslinien)
+   ============================================================ */
+function renderTreeTabContent(){
+  let html = '';
+  if(state.mode==='ko'){
+    html += renderBracketTreeHTML('KO','treeKO');
+  } else if(state.mode==='doppelko'){
+    html += `<div class="round-title" style="margin-top:0;">Winner-Bracket</div>`;
+    html += renderBracketTreeHTML('WB','treeWB');
+
+    html += `<div class="round-title" style="margin-top:28px;">Verlierer-Runden</div>
+      <div class="info-box" style="margin-bottom:14px;">Die Verlierer-Runde wird live erzeugt (Paarungen stehen erst fest, sobald du sie generierst) – deshalb als einfache Liste statt als verlinkter Baum.</div>`;
+    const lbMatches = state.matches.filter(m=>m.stage==='LB');
+    if(lbMatches.length===0){
+      html += `<p class="center-note">Noch keine Verlierer-Runde gestartet.</p>`;
+    } else {
+      const lbRounds = {};
+      lbMatches.forEach(m=>{ (lbRounds[m.round]=lbRounds[m.round]||[]).push(m); });
+      Object.keys(lbRounds).map(Number).sort((a,b)=>a-b).forEach(r=>{
+        html += `<div class="round-block"><div class="round-title">Verlierer-Runde ${r}</div>
+          <div class="matches-grid">${lbRounds[r].map(renderMatchCard).join('')}</div></div>`;
+      });
+    }
+    if(state.doppel.grandFinal){
+      html += `<div class="round-title" style="margin-top:28px;">Finale</div>
+        <div class="matches-grid">${renderMatchCard(state.doppel.grandFinal)}</div>`;
+    }
+  } else if(state.mode==='gruppen'){
+    if(state.playoffsGenerated || state.playoffPreviewBuilt){
+      html += renderBracketTreeHTML('PLAYOFF','treePLAYOFF');
+    } else {
+      html += `<p class="center-note">Der Turnierbaum erscheint hier, sobald im Tab „Spielplan" die Playoffs generiert wurden.</p>`;
+    }
+  }
+  return html;
+}
+
+function renderBracketTreeHTML(stage, containerId){
+  const stageMatches = state.matches.filter(m=>m.stage===stage);
+  if(stageMatches.length===0) return `<p class="center-note">Noch keine Spiele in diesem Bracket.</p>`;
+  const rounds = {};
+  stageMatches.forEach(m=>{ (rounds[m.round]=rounds[m.round]||[]).push(m); });
+  const roundNums = Object.keys(rounds).map(Number).sort((a,b)=>a-b);
+  const total = roundNums.length;
+  const roundName = (i)=>{
+    const left = total - i;
+    if(left===1) return 'Finale';
+    if(left===2) return 'Halbfinale';
+    if(left===3) return 'Viertelfinale';
+    return 'Runde '+roundNums[i];
+  };
+  const round1Count = rounds[roundNums[0]].length;
+  const treeHeight = Math.max(round1Count * 96, 170);
+
+  const columns = roundNums.map((r,i)=>`
+    <div class="tree-col">
+      <div class="tree-col-title">${roundName(i)}</div>
+      <div class="tree-col-matches">
+        ${rounds[r].map(m=>`<div class="tree-match-wrap">${renderMatchCard(m)}</div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  return `<div class="bracket-tree" id="${containerId}" style="height:${treeHeight}px;">
+    ${columns}
+    <svg class="bracket-lines"></svg>
+  </div>`;
+}
+
+// Zeichnet für den aktuellen Modus die passenden Baum-Verbindungslinien
+function drawAllTreeConnectors(){
+  if(!state) return;
+  if(state.mode==='ko') drawBracketConnectors('KO','treeKO');
+  else if(state.mode==='doppelko') drawBracketConnectors('WB','treeWB');
+  else if(state.mode==='gruppen' && (state.playoffsGenerated || state.playoffPreviewBuilt)) drawBracketConnectors('PLAYOFF','treePLAYOFF');
+}
+
+// Misst die tatsächliche Position jeder Spielkarte im DOM und zeichnet
+// eine Winkel-Linie (rechts -> Mitte -> links) zum jeweils nächsten Spiel.
+function drawBracketConnectors(stage, containerId){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  const svg = container.querySelector('.bracket-lines');
+  if(!svg) return;
+
+  const w = container.scrollWidth, h = container.scrollHeight;
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.innerHTML = '';
+
+  const contRect = container.getBoundingClientRect();
+  state.matches.filter(m => m.stage===stage && m.nextMatchId).forEach(m=>{
+    const elA = container.querySelector(`[data-match-id="${m.id}"]`);
+    const elB = container.querySelector(`[data-match-id="${m.nextMatchId}"]`);
+    if(!elA || !elB) return;
+    const rA = elA.getBoundingClientRect(), rB = elB.getBoundingClientRect();
+    const x1 = rA.right - contRect.left + container.scrollLeft;
+    const y1 = rA.top + rA.height/2 - contRect.top + container.scrollTop;
+    const x2 = rB.left - contRect.left + container.scrollLeft;
+    const y2 = rB.top + rB.height/2 - contRect.top + container.scrollTop;
+    const midX = (x1+x2)/2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
+    path.setAttribute('stroke', '#3a3a42');
+    path.setAttribute('stroke-width','2');
+    path.setAttribute('fill','none');
+    svg.appendChild(path);
+  });
+}
+
+window.addEventListener('resize', ()=>{
+  if(state && activeTab==='baum') drawAllTreeConnectors();
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+addTeamRow('Court Kings');
+addTeamRow('Baseline Legends');
+addTeamRow('Rim Rockers');
+addTeamRow('Alley Oops');
+renderModeGrid();
+renderRegistrationList();
+routeInitialView();
+autoConnectSupabase(); // versucht im Hintergrund automatisch zu verbinden, falls DEFAULT_SUPABASE_* gesetzt sind
+</script>
+</body>
+</html>
